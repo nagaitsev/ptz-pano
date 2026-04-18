@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Iterator
 
 from ptz_pano.models import CameraPose
@@ -32,9 +32,34 @@ class ScanPlanner:
                 yield CameraPose(pan=pan, tilt=tilt, zoom=self.config.zoom)
 
 
+def apply_scan_angle_window(
+    config: ScanPlanConfig,
+    center: CameraPose,
+    horizontal_deg: float | None = None,
+    vertical_deg: float | None = None,
+    pan_units_per_degree: float | None = None,
+    tilt_units_per_degree: float | None = None,
+) -> ScanPlanConfig:
+    updates = {}
+    if horizontal_deg is not None:
+        if pan_units_per_degree is None:
+            raise ValueError("pan_units_per_degree is required for horizontal scan angle")
+        half_range = round(horizontal_deg * pan_units_per_degree / 2)
+        updates["pan_min"] = center.pan - half_range
+        updates["pan_max"] = center.pan + half_range
+    if vertical_deg is not None:
+        if tilt_units_per_degree is None:
+            raise ValueError("tilt_units_per_degree is required for vertical scan angle")
+        half_range = round(vertical_deg * tilt_units_per_degree / 2)
+        updates["tilt_min"] = center.tilt - half_range
+        updates["tilt_max"] = center.tilt + half_range
+    if not updates:
+        return config
+    return replace(config, **updates)
+
+
 def _inclusive_range(start: int, stop: int, step: int) -> Iterator[int]:
     value = start
     while value <= stop:
         yield value
         value += step
-

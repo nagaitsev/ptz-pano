@@ -18,7 +18,7 @@ from ptz_pano.calibration.lens_table import LensCalibration
 from ptz_pano.camera.targeting import CameraTarget, target_to_pose
 from ptz_pano.jsonio import read_json, write_json
 from ptz_pano.models import CameraPose, ScanDocument, to_jsonable
-from ptz_pano.scan import ScanPlanConfig, ScanPlanner, ScanRunner
+from ptz_pano.scan import ScanPlanConfig, ScanPlanner, ScanRunner, apply_scan_angle_window
 from ptz_pano.storage.scan_repository import ScanRepository
 from ptz_pano.stitching import PanoramaBuilder
 from ptz_pano.stitching.simple_compositor import SimpleCompositor
@@ -82,6 +82,8 @@ class StitchRequest(BaseModel):
 class ScanAndStitchRequest(BaseModel):
     scan_id: str | None = None
     stitch_after: bool = True
+    horizontal_angle_deg: float | None = Field(default=None, gt=0, le=360)
+    vertical_angle_deg: float | None = Field(default=None, gt=0, le=180)
     strategy: Literal["average", "max_weight"] = "max_weight"
     projection: Literal["angular", "sphere"] = "sphere"
     use_lens_calibration: bool = True
@@ -112,7 +114,11 @@ def start_scan_and_stitch_job(request: ScanAndStitchRequest) -> dict:
         raise HTTPException(status_code=409, detail="scan already exists")
 
     def run() -> dict:
-        scan_path = _run_scan(scan_id)
+        scan_path = _run_scan(
+            scan_id,
+            horizontal_angle_deg=request.horizontal_angle_deg,
+            vertical_angle_deg=request.vertical_angle_deg,
+        )
         result: dict = {"scan_id": scan_id, "scan_path": str(scan_path)}
         if request.stitch_after:
             result["panorama"] = _build_panorama(
@@ -512,7 +518,11 @@ def _start_job(kind: str, target: Callable[[], dict]) -> str:
     return job_id
 
 
-def _run_scan(scan_id: str) -> Path:
+def _run_scan(
+    scan_id: str,
+    horizontal_angle_deg: float | None = None,
+    vertical_angle_deg: float | None = None,
+) -> Path:
     raw_config = load_app_config(CAMERA_CONFIG_PATH)
     fov_table = None
     pan_units_per_degree = None
@@ -535,16 +545,25 @@ def _run_scan(scan_id: str) -> Path:
 
     camera = build_camera(CAMERA_CONFIG_PATH)
     capture = build_capture(CAMERA_CONFIG_PATH)
-    runner = ScanRunner(
-        camera=camera,
-        capture=capture,
-        repository=repository,
-        settle_sec=settle_sec,
-        fov_table=fov_table,
-        pan_units_per_degree=pan_units_per_degree,
-        tilt_units_per_degree=tilt_units_per_degree,
-    )
     try:
+        if horizontal_angle_deg is not None or vertical_angle_deg is not None:
+            scan_config = apply_scan_angle_window(
+                config=scan_config,
+                center=camera.get_position(),
+                horizontal_deg=horizontal_angle_deg,
+                vertical_deg=vertical_angle_deg,
+                pan_units_per_degree=pan_units_per_degree,
+                tilt_units_per_degree=tilt_units_per_degree,
+            )
+        runner = ScanRunner(
+            camera=camera,
+            capture=capture,
+            repository=repository,
+            settle_sec=settle_sec,
+            fov_table=fov_table,
+            pan_units_per_degree=pan_units_per_degree,
+            tilt_units_per_degree=tilt_units_per_degree,
+        )
         return runner.run(document, ScanPlanner(scan_config))
     finally:
         camera.close()

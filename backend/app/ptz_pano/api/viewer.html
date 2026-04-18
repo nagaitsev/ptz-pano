@@ -314,6 +314,13 @@
         padding: 6px 8px;
       }
 
+      .settings-note {
+        margin: 8px 0;
+        font-size: 12px;
+        line-height: 1.35;
+        color: rgba(255, 255, 255, 0.68);
+      }
+
       .settings-actions {
         display: flex;
         flex-wrap: wrap;
@@ -394,6 +401,17 @@
         <input id="settingsScanId" type="text" placeholder="scan_20260418_120000" />
       </label>
       <label>
+        Горизонтальный угол съемки, °
+        <input id="settingsHorizontalAngle" type="number" min="1" max="360" step="1" placeholder="по конфигу" />
+      </label>
+      <label>
+        Вертикальный угол съемки, °
+        <input id="settingsVerticalAngle" type="number" min="1" max="180" step="1" placeholder="по конфигу" />
+      </label>
+      <p class="settings-note">
+        Если угол задан, текущая позиция камеры будет центром зоны съемки.
+      </p>
+      <label>
         Проекция
         <select id="settingsProjection">
           <option value="sphere" selected>sphere</option>
@@ -434,6 +452,8 @@
       const settingsPanel = document.querySelector("#settingsPanel");
       const settingsClose = document.querySelector("#settingsClose");
       const settingsScanId = document.querySelector("#settingsScanId");
+      const settingsHorizontalAngle = document.querySelector("#settingsHorizontalAngle");
+      const settingsVerticalAngle = document.querySelector("#settingsVerticalAngle");
       const settingsProjection = document.querySelector("#settingsProjection");
       const settingsStrategy = document.querySelector("#settingsStrategy");
       const settingsUseLens = document.querySelector("#settingsUseLens");
@@ -727,24 +747,50 @@
 
       async function startScanAndStitchJob() {
         const scanId = settingsScanId.value.trim() || defaultScanId();
+        let horizontalAngleDeg = null;
+        let verticalAngleDeg = null;
+        try {
+          horizontalAngleDeg = readOptionalPositiveNumber(settingsHorizontalAngle, "Горизонтальный угол", 360);
+          verticalAngleDeg = readOptionalPositiveNumber(settingsVerticalAngle, "Вертикальный угол", 180);
+        } catch (error) {
+          setSettingsBusy(false, error.message);
+          return;
+        }
         settingsScanId.value = scanId;
         setSettingsBusy(true, `Запуск съемки ${scanId}...`);
         try {
+          const body = {
+            scan_id: scanId,
+            stitch_after: true,
+            projection: settingsProjection.value,
+            strategy: settingsStrategy.value,
+            use_lens_calibration: settingsUseLens.checked,
+          };
+          if (horizontalAngleDeg !== null) {
+            body.horizontal_angle_deg = horizontalAngleDeg;
+          }
+          if (verticalAngleDeg !== null) {
+            body.vertical_angle_deg = verticalAngleDeg;
+          }
           const response = await fetchJson("/api/scan-and-stitch", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              scan_id: scanId,
-              stitch_after: true,
-              projection: settingsProjection.value,
-              strategy: settingsStrategy.value,
-              use_lens_calibration: settingsUseLens.checked,
-            }),
+            body: JSON.stringify(body),
           });
           monitorJob(response.job_id);
         } catch (error) {
           setSettingsBusy(false, error.message);
         }
+      }
+
+      function readOptionalPositiveNumber(input, label, max) {
+        const rawValue = input.value.trim();
+        if (!rawValue) return null;
+        const value = Number(rawValue.replace(",", "."));
+        if (!Number.isFinite(value) || value <= 0 || value > max) {
+          throw new Error(`${label}: введите число от 1 до ${max}`);
+        }
+        return value;
       }
 
       function monitorJob(jobId) {

@@ -114,7 +114,9 @@ the latest scan with a `preview.jpg`, or a specific scan with
 target field of view before choosing camera zoom; lower values zoom in more.
 The yaw/pitch inputs temporarily offset the reticle target in degrees.
 The `Настройки` button opens scan/stitch controls for rebuilding the current
-panorama or capturing a new scan and stitching it.
+panorama or capturing a new scan and stitching it. In scan settings, optional
+horizontal and vertical angle fields define the capture window in degrees around
+the camera's current position; leave them empty to use `config/camera.local.json`.
 
 ## Current Scope
 

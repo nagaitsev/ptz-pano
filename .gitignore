@@ -9,6 +9,9 @@ config/*.local.json
 data/projects/*
 data/scans/*
 data/calibration/*
+data/*.jpg
+data/*.jpeg
+data/*.png
 !data/projects/.gitkeep
 !data/scans/.gitkeep
 !data/calibration/.gitkeep

@@ -17,7 +17,7 @@ from ptz_pano.tools.config import build_camera, load_targeting_config
 app = FastAPI(title="PTZ Pano")
 repository = ScanRepository(Path("data/scans"))
 CAMERA_CONFIG_PATH = Path(os.environ.get("PTZ_PANO_CAMERA_CONFIG", "config/camera.local.json"))
-TARGET_HFOV_SCALE = float(os.environ.get("PTZ_PANO_TARGET_HFOV_SCALE", "0.75"))
+TARGET_HFOV_SCALE = float(os.environ.get("PTZ_PANO_TARGET_HFOV_SCALE", "0.45"))
 
 
 @app.get("/health")

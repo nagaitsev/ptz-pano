@@ -55,7 +55,7 @@ After building a panorama, start the backend and open the viewer:
 
 ```powershell
 $env:PTZ_PANO_CAMERA_CONFIG='config/camera.local.json'
-$env:PTZ_PANO_TARGET_HFOV_SCALE='0.75'
+$env:PTZ_PANO_TARGET_HFOV_SCALE='0.45'
 uvicorn ptz_pano.api.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -64,6 +64,7 @@ press `Навести камеру` to move the camera to the center reticle. Th
 the latest scan with a `preview.jpg`, or a specific scan with
 `http://localhost:8000/?scan=<scan-id>`. The `k` slider temporarily scales the
 target field of view before choosing camera zoom; lower values zoom in more.
+The yaw/pitch inputs temporarily offset the reticle target in degrees.
 
 ## Current Scope
 

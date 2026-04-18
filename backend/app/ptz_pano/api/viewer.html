@@ -389,7 +389,8 @@
         const fullY = bbox[1] + (y / image.naturalHeight) * bboxHeight;
         const visiblePreviewWidth = Math.min(innerWidth / state.scale, image.naturalWidth);
         const visibleFullWidth = (visiblePreviewWidth / image.naturalWidth) * bboxWidth;
-        const targetHfov = clamp((visibleFullWidth / panoramaSize[0]) * 360, 2, 120);
+        const targetHfovScale = state.info.target_hfov_scale ?? 1;
+        const targetHfov = clamp((visibleFullWidth / panoramaSize[0]) * 360 * targetHfovScale, 2, 120);
         return {
           yaw_deg: (fullX / panoramaSize[0]) * 360 - 180,
           pitch_deg: 90 - (fullY / panoramaSize[1]) * 180,
@@ -449,4 +450,3 @@
     </script>
   </body>
 </html>
-

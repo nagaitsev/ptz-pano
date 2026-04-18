@@ -55,6 +55,7 @@ After building a panorama, start the backend and open the viewer:
 
 ```powershell
 $env:PTZ_PANO_CAMERA_CONFIG='config/camera.local.json'
+$env:PTZ_PANO_TARGET_HFOV_SCALE='0.75'
 uvicorn ptz_pano.api.main:app --host 0.0.0.0 --port 8000
 ```
 

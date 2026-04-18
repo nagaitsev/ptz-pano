@@ -26,18 +26,67 @@ More detail:
 - [Modules](docs/modules.md)
 - [Processing logic](docs/pipeline.md)
 
-## Setup
+## Quick Start
+
+Run once:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e .
+.\scripts\setup.ps1
 ```
 
-## Debug Commands
+Then start the whole app:
+
+```powershell
+.\scripts\start.ps1
+```
+
+Open:
+
+- `http://localhost:8000/`
+- `http://10.1.1.80:8000/` from another device on the same network, when that interface is active
+- `http://10.1.1.13:8000/` from another device on the same network, when that interface is active
 
 Copy `config/camera.example.json` to `config/camera.local.json` and edit the
-camera host, RTSP URL, and VISCA port.
+camera host, RTSP URL, and VISCA port if the local config does not exist yet.
+
+## Common Tasks
+
+Run checks:
+
+```powershell
+.\scripts\check.ps1
+```
+
+Rebuild the current saved panorama without moving the camera:
+
+```powershell
+.\scripts\build-panorama.ps1
+```
+
+Start with code reload while editing:
+
+```powershell
+.\scripts\start.ps1 -Reload
+```
+
+## Module Map
+
+The working modules live under `backend/app/ptz_pano/`:
+
+- `api/`: web app, viewer, calibration pages, HTTP endpoints.
+- `camera/`: PTZ/VISCA control only.
+- `capture/`: frame capture only.
+- `calibration/`: FOV and lens calibration.
+- `scan/`: scan planning and execution.
+- `stitching/`: panorama assembly from saved scans.
+- `panorama/`: compatibility path that re-exports stitching.
+- `hotspots/`: saved panorama points mapped to PTZ poses.
+- `storage/`: scan folder filesystem contract.
+- `tools/`: command-line module debug tools.
+
+Each module folder has its own `README.md`.
+
+## Debug Commands
 
 ```powershell
 python -m ptz_pano.tools.camera_ping --config config/camera.local.json
@@ -52,12 +101,10 @@ python -m ptz_pano.tools.build_panorama --scan data/scans/scan_001 --lens-calibr
 
 ## Viewer
 
-After building a panorama, start the backend and open the viewer:
+The simple startup path is:
 
 ```powershell
-$env:PTZ_PANO_CAMERA_CONFIG='config/camera.local.json'
-$env:PTZ_PANO_TARGET_HFOV_SCALE='0.45'
-uvicorn ptz_pano.api.main:app --host 0.0.0.0 --port 8000
+.\scripts\start.ps1
 ```
 
 Open `http://localhost:8000/`. Use mouse wheel or pinch to zoom, drag to pan, and

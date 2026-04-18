@@ -4,6 +4,18 @@ This project is split into small modules that can be debugged independently.
 Each module owns one concern and communicates through explicit Python interfaces
 or saved scan artifacts.
 
+For normal operation, use the root scripts:
+
+```powershell
+.\scripts\setup.ps1
+.\scripts\start.ps1
+.\scripts\build-panorama.ps1
+.\scripts\check.ps1
+```
+
+For module work, open the module folder under `backend/app/ptz_pano/`; each
+folder has a short `README.md`.
+
 ## `camera`
 
 Owns PTZ control only. It does not capture frames, plan scans, or build

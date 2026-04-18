@@ -408,6 +408,13 @@
         Вертикальный угол съемки, °
         <input id="settingsVerticalAngle" type="number" min="1" max="180" step="1" placeholder="по конфигу" />
       </label>
+      <label>
+        Порядок съемки
+        <select id="settingsScanOrder">
+          <option value="column_snake" selected>снизу вверх, потом сверху вниз</option>
+          <option value="row_snake">по рядам слева направо</option>
+        </select>
+      </label>
       <p class="settings-note">
         Если угол задан, текущая позиция камеры будет центром зоны съемки.
       </p>
@@ -454,6 +461,7 @@
       const settingsScanId = document.querySelector("#settingsScanId");
       const settingsHorizontalAngle = document.querySelector("#settingsHorizontalAngle");
       const settingsVerticalAngle = document.querySelector("#settingsVerticalAngle");
+      const settingsScanOrder = document.querySelector("#settingsScanOrder");
       const settingsProjection = document.querySelector("#settingsProjection");
       const settingsStrategy = document.querySelector("#settingsStrategy");
       const settingsUseLens = document.querySelector("#settingsUseLens");
@@ -764,6 +772,7 @@
             stitch_after: true,
             projection: settingsProjection.value,
             strategy: settingsStrategy.value,
+            scan_order: settingsScanOrder.value,
             use_lens_calibration: settingsUseLens.checked,
           };
           if (horizontalAngleDeg !== null) {

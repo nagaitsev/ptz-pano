@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 from time import sleep
 from typing import Callable, Literal
@@ -84,6 +85,7 @@ class ScanAndStitchRequest(BaseModel):
     stitch_after: bool = True
     horizontal_angle_deg: float | None = Field(default=None, gt=0, le=360)
     vertical_angle_deg: float | None = Field(default=None, gt=0, le=180)
+    scan_order: Literal["row_snake", "column_snake"] | None = None
     strategy: Literal["average", "max_weight"] = "max_weight"
     projection: Literal["angular", "sphere"] = "sphere"
     use_lens_calibration: bool = True
@@ -118,6 +120,7 @@ def start_scan_and_stitch_job(request: ScanAndStitchRequest) -> dict:
             scan_id,
             horizontal_angle_deg=request.horizontal_angle_deg,
             vertical_angle_deg=request.vertical_angle_deg,
+            scan_order=request.scan_order,
         )
         result: dict = {"scan_id": scan_id, "scan_path": str(scan_path)}
         if request.stitch_after:
@@ -522,6 +525,7 @@ def _run_scan(
     scan_id: str,
     horizontal_angle_deg: float | None = None,
     vertical_angle_deg: float | None = None,
+    scan_order: Literal["row_snake", "column_snake"] | None = None,
 ) -> Path:
     raw_config = load_app_config(CAMERA_CONFIG_PATH)
     fov_table = None
@@ -537,6 +541,8 @@ def _run_scan(
     raw_scan_config = dict(raw_config["scan"])
     settle_sec = raw_scan_config.pop("settle_sec", 1.0)
     scan_config = ScanPlanConfig(**raw_scan_config)
+    if scan_order is not None:
+        scan_config = replace(scan_config, order=scan_order)
     document = ScanDocument(
         id=scan_id,
         camera=load_camera_config(CAMERA_CONFIG_PATH),

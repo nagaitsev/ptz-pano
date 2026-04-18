@@ -32,6 +32,7 @@ class SimpleCompositor:
     def build(self, scan_path: Path, frames: list[FrameMetadata], output_path: Path) -> CompositorResult:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         canvas = np.zeros((self.height, self.width, 3), dtype=np.float32)
+        footprint = np.zeros((self.height, self.width), dtype=bool)
 
         if self.strategy == "average":
             weights = np.zeros((self.height, self.width, 1), dtype=np.float32)
@@ -49,12 +50,13 @@ class SimpleCompositor:
                 image = self.lens_calibration.undistort(image, frame.pose.zoom)
 
             # Use pyramidal mask for max_weight to ensure unique winner in overlaps
-            warped, mask, x0, y0 = self._warp_frame(
+            warped, mask, valid_footprint, x0, y0 = self._warp_frame(
                 image,
                 frame,
                 pyramidal=(self.strategy == "max_weight"),
             )
             h, w = warped.shape[:2]
+            footprint[y0 : y0 + h, x0 : x0 + w] |= valid_footprint
 
             if self.strategy == "average":
                 canvas[y0 : y0 + h, x0 : x0 + w] += warped.astype(np.float32) * mask
@@ -72,9 +74,9 @@ class SimpleCompositor:
 
         if self.strategy == "average":
             np.divide(canvas, weights, out=canvas, where=weights > 0)
-            populated = weights[:, :, 0] > 0
+            populated = footprint
         else:
-            populated = best_weights > 0
+            populated = footprint
 
         result = np.clip(canvas, 0, 255).astype(np.uint8)
         if not cv2.imwrite(str(output_path), result):
@@ -94,7 +96,7 @@ class SimpleCompositor:
         image: np.ndarray,
         frame: FrameMetadata,
         pyramidal: bool = False,
-    ) -> tuple[np.ndarray, np.ndarray, int, int]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
         assert frame.hfov_deg is not None
         assert frame.vfov_deg is not None
 
@@ -151,7 +153,7 @@ class SimpleCompositor:
         )
 
         mask = _feather_mask_from_norm(x_norm, y_norm, valid, pyramidal=pyramidal)
-        return warped, mask, x0, y0
+        return warped, mask, valid, x0, y0
 
 
 def _feather_mask(width: int, height: int) -> np.ndarray:

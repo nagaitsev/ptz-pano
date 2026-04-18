@@ -3,7 +3,34 @@ from __future__ import annotations
 import pytest
 
 from ptz_pano.models import CameraPose
-from ptz_pano.scan import ScanPlanConfig, apply_scan_angle_window
+from ptz_pano.scan import ScanPlanConfig, ScanPlanner, apply_scan_angle_window
+
+
+def test_scan_planner_can_use_column_snake_order() -> None:
+    config = ScanPlanConfig(
+        pan_min=0,
+        pan_max=2,
+        pan_step=1,
+        tilt_min=10,
+        tilt_max=12,
+        tilt_step=1,
+        zoom=0,
+        order="column_snake",
+    )
+
+    poses = [(pose.pan, pose.tilt) for pose in ScanPlanner(config).poses()]
+
+    assert poses == [
+        (0, 10),
+        (0, 11),
+        (0, 12),
+        (1, 12),
+        (1, 11),
+        (1, 10),
+        (2, 10),
+        (2, 11),
+        (2, 12),
+    ]
 
 
 def test_apply_scan_angle_window_centers_ranges_on_pose() -> None:

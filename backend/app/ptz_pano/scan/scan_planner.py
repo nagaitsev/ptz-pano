@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Iterator
+from typing import Iterator, Literal
 
 from ptz_pano.models import CameraPose
 
@@ -15,6 +15,7 @@ class ScanPlanConfig:
     tilt_max: int
     tilt_step: int
     zoom: int
+    order: Literal["row_snake", "column_snake"] = "row_snake"
 
 
 class ScanPlanner:
@@ -26,6 +27,13 @@ class ScanPlanner:
     def poses(self) -> Iterator[CameraPose]:
         tilts = list(_inclusive_range(self.config.tilt_min, self.config.tilt_max, self.config.tilt_step))
         pans = list(_inclusive_range(self.config.pan_min, self.config.pan_max, self.config.pan_step))
+        if self.config.order == "column_snake":
+            for column, pan in enumerate(pans):
+                column_tilts = tilts if column % 2 == 0 else list(reversed(tilts))
+                for tilt in column_tilts:
+                    yield CameraPose(pan=pan, tilt=tilt, zoom=self.config.zoom)
+            return
+
         for row, tilt in enumerate(tilts):
             row_pans = pans if row % 2 == 0 else list(reversed(pans))
             for pan in row_pans:

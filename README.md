@@ -117,6 +117,10 @@ The `Настройки` button opens scan/stitch controls for rebuilding the cu
 panorama or capturing a new scan and stitching it. In scan settings, optional
 horizontal and vertical angle fields define the capture window in degrees around
 the camera's current position; leave them empty to use `config/camera.local.json`.
+The scan order selector can use column snake mode, which captures one vertical
+column bottom-to-top, shifts horizontally, then captures the next column
+top-to-bottom. This helps compare row alignment against the original row snake
+mode.
 
 ## Current Scope
 

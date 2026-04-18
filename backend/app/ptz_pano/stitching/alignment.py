@@ -174,10 +174,7 @@ class FeatureAligner:
 
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         matches = matcher.knnMatch(left_descriptors, right_descriptors, k=2)
-        good_matches = []
-        for nearest, second in matches:
-            if nearest.distance < 0.75 * second.distance:
-                good_matches.append(nearest)
+        good_matches = _ratio_test_matches(matches)
         if len(good_matches) < self.min_matches:
             return None
 
@@ -233,10 +230,7 @@ class FeatureAligner:
 
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         matches = matcher.knnMatch(lower_descriptors, upper_descriptors, k=2)
-        good_matches = []
-        for nearest, second in matches:
-            if nearest.distance < 0.75 * second.distance:
-                good_matches.append(nearest)
+        good_matches = _ratio_test_matches(matches)
         if len(good_matches) < self.min_matches:
             return None
 
@@ -280,6 +274,17 @@ def _with_angles(frame: FrameMetadata, yaw_deg: float, pitch_deg: float) -> Fram
         pitch_deg=pitch_deg,
     )
     return replace(frame, pose=pose)
+
+
+def _ratio_test_matches(matches: tuple[tuple[cv2.DMatch, ...], ...]) -> list[cv2.DMatch]:
+    good_matches = []
+    for candidates in matches:
+        if len(candidates) < 2:
+            continue
+        nearest, second = candidates[:2]
+        if nearest.distance < 0.75 * second.distance:
+            good_matches.append(nearest)
+    return good_matches
 
 
 def _frame_yaw(frame: FrameMetadata) -> float:

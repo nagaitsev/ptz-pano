@@ -58,6 +58,9 @@ Owns the mapping from camera zoom units to optical field of view.
 The panorama builder needs this mapping to place each captured frame on a
 spherical panorama without relying only on feature matching.
 
+When a scan config contains `calibration.fov_table`, `run_scan` stores
+interpolated `hfov_deg` and `vfov_deg` in every frame entry.
+
 Current model:
 
 ```json

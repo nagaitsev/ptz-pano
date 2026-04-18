@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from ptz_pano.calibration import FovTable
 from ptz_pano.models import ScanDocument
 from ptz_pano.scan import ScanPlanConfig, ScanPlanner, ScanRunner
 from ptz_pano.storage import ScanRepository
@@ -17,6 +18,11 @@ def main() -> None:
     args = parser.parse_args()
 
     raw_config = load_app_config(args.config)
+    fov_table = None
+    calibration_config = raw_config.get("calibration")
+    if calibration_config and calibration_config.get("fov_table"):
+        fov_table = FovTable.load(Path(calibration_config["fov_table"]))
+
     raw_scan_config = dict(raw_config["scan"])
     settle_sec = raw_scan_config.pop("settle_sec", 1.0)
     scan_config = ScanPlanConfig(**raw_scan_config)
@@ -31,6 +37,7 @@ def main() -> None:
         capture=capture,
         repository=ScanRepository(args.root),
         settle_sec=settle_sec,
+        fov_table=fov_table,
     )
 
     try:

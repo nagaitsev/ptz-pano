@@ -15,5 +15,6 @@ data/*.png
 !data/projects/.gitkeep
 !data/scans/.gitkeep
 !data/calibration/.gitkeep
+!data/calibration/*.example.fov.json
 
 *.log

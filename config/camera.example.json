@@ -12,6 +12,9 @@
     "source": "rtsp://192.168.1.50:554/1",
     "resolution": [1920, 1080]
   },
+  "calibration": {
+    "fov_table": "data/calibration/ptzoptics.example.fov.json"
+  },
   "scan": {
     "pan_min": -3000,
     "pan_max": 3000,
@@ -23,4 +26,3 @@
     "settle_sec": 1.0
   }
 }
-

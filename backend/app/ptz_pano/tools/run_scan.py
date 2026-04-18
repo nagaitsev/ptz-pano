@@ -19,9 +19,14 @@ def main() -> None:
 
     raw_config = load_app_config(args.config)
     fov_table = None
+    pan_units_per_degree = None
+    tilt_units_per_degree = None
     calibration_config = raw_config.get("calibration")
-    if calibration_config and calibration_config.get("fov_table"):
-        fov_table = FovTable.load(Path(calibration_config["fov_table"]))
+    if calibration_config:
+        if calibration_config.get("fov_table"):
+            fov_table = FovTable.load(Path(calibration_config["fov_table"]))
+        pan_units_per_degree = calibration_config.get("pan_units_per_degree")
+        tilt_units_per_degree = calibration_config.get("tilt_units_per_degree")
 
     raw_scan_config = dict(raw_config["scan"])
     settle_sec = raw_scan_config.pop("settle_sec", 1.0)
@@ -38,6 +43,8 @@ def main() -> None:
         repository=ScanRepository(args.root),
         settle_sec=settle_sec,
         fov_table=fov_table,
+        pan_units_per_degree=pan_units_per_degree,
+        tilt_units_per_degree=tilt_units_per_degree,
     )
 
     try:

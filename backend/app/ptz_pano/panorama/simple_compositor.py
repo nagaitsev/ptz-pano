@@ -21,8 +21,8 @@ class CompositorResult:
 class SimpleCompositor:
     width: int = 4096
     height: int = 2048
-    pan_units_per_degree: float = 512 / 10
-    tilt_units_per_degree: float = 512 / 10
+    pan_units_per_degree: float = 2448 / 170
+    tilt_units_per_degree: float = 14.4
 
     def build(self, scan_path: Path, frames: list[FrameMetadata], output_path: Path) -> CompositorResult:
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,17 +72,40 @@ class SimpleCompositor:
         if pitch_deg is None:
             pitch_deg = frame.pose.tilt / self.tilt_units_per_degree
 
-        output_w = max(1, round(self.width * frame.hfov_deg / 360))
-        output_h = max(1, round(self.height * frame.vfov_deg / 180))
-        resized = cv2.resize(image, (output_w, output_h), interpolation=cv2.INTER_AREA)
+        x_center = _yaw_to_x(yaw_deg, self.width)
+        y_center = _pitch_to_y(pitch_deg, self.height)
+        output_w = max(1, int(np.ceil(self.width * frame.hfov_deg / 360)))
+        output_h = max(1, int(np.ceil(self.height * frame.vfov_deg / 180)))
+        x0 = _clamp(round(x_center - output_w / 2), 0, self.width - output_w)
+        y0 = _clamp(round(y_center - output_h / 2), 0, self.height - output_h)
 
-        x_center = round((yaw_deg + 180) / 360 * self.width)
-        y_center = round((90 - pitch_deg) / 180 * self.height)
-        x0 = _clamp(x_center - output_w // 2, 0, self.width - output_w)
-        y0 = _clamp(y_center - output_h // 2, 0, self.height - output_h)
+        xs = np.arange(x0, x0 + output_w, dtype=np.float32)
+        ys = np.arange(y0, y0 + output_h, dtype=np.float32)
+        panorama_x, panorama_y = np.meshgrid(xs, ys)
+        sample_yaw = panorama_x / self.width * 360 - 180
+        sample_pitch = 90 - panorama_y / self.height * 180
 
-        mask = _feather_mask(output_w, output_h)
-        return resized, mask, x0, y0
+        delta_yaw = _normalize_degrees(sample_yaw - yaw_deg)
+        delta_pitch = sample_pitch - pitch_deg
+        x_norm = np.tan(np.deg2rad(delta_yaw)) / np.tan(np.deg2rad(frame.hfov_deg / 2))
+        y_norm = np.tan(np.deg2rad(delta_pitch)) / np.tan(np.deg2rad(frame.vfov_deg / 2))
+        valid = (np.abs(x_norm) <= 1) & (np.abs(y_norm) <= 1)
+
+        source_x = ((x_norm + 1) * 0.5 * (image.shape[1] - 1)).astype(np.float32)
+        source_y = ((1 - y_norm) * 0.5 * (image.shape[0] - 1)).astype(np.float32)
+        source_x[~valid] = -1
+        source_y[~valid] = -1
+        warped = cv2.remap(
+            image,
+            source_x,
+            source_y,
+            interpolation=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(0, 0, 0),
+        )
+
+        mask = _feather_mask_from_norm(x_norm, y_norm, valid)
+        return warped, mask, x0, y0
 
 
 def _feather_mask(width: int, height: int) -> np.ndarray:
@@ -93,6 +116,30 @@ def _feather_mask(width: int, height: int) -> np.ndarray:
     feather_x = np.clip(edge_x * 12, 0.05, 1)
     feather_y = np.clip(edge_y * 12, 0.05, 1)
     return (feather_y[:, None] * feather_x[None, :])[:, :, None]
+
+
+def _feather_mask_from_norm(
+    x_norm: np.ndarray,
+    y_norm: np.ndarray,
+    valid: np.ndarray,
+) -> np.ndarray:
+    edge_x = 1 - np.abs(x_norm)
+    edge_y = 1 - np.abs(y_norm)
+    feather = np.clip(edge_x * 8, 0.05, 1) * np.clip(edge_y * 8, 0.05, 1)
+    feather[~valid] = 0
+    return feather[:, :, None].astype(np.float32)
+
+
+def _yaw_to_x(yaw_deg: float, width: int) -> float:
+    return (_normalize_degrees(yaw_deg) + 180) / 360 * width
+
+
+def _pitch_to_y(pitch_deg: float, height: int) -> float:
+    return (90 - pitch_deg) / 180 * height
+
+
+def _normalize_degrees(value: np.ndarray | float) -> np.ndarray | float:
+    return (value + 180) % 360 - 180
 
 
 def _clamp(value: int, low: int, high: int) -> int:

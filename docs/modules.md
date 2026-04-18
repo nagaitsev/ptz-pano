@@ -61,6 +61,11 @@ spherical panorama without relying only on feature matching.
 When a scan config contains `calibration.fov_table`, `run_scan` stores
 interpolated `hfov_deg` and `vfov_deg` in every frame entry.
 
+When `calibration.pan_units_per_degree` and
+`calibration.tilt_units_per_degree` are configured, `run_scan` also stores
+derived `yaw_deg` and `pitch_deg` in every frame pose. These values are used by
+the panorama compositor instead of guessing the conversion from VISCA units.
+
 Current model:
 
 ```json

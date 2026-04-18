@@ -13,7 +13,9 @@
     "resolution": [1920, 1080]
   },
   "calibration": {
-    "fov_table": "data/calibration/ptzoptics.example.fov.json"
+    "fov_table": "data/calibration/ptzoptics.example.fov.json",
+    "pan_units_per_degree": 14.4,
+    "tilt_units_per_degree": 14.4
   },
   "scan": {
     "pan_min": -3000,

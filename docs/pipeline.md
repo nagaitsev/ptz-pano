@@ -12,6 +12,7 @@ camera profile + capture source + scan settings
   -> camera move_absolute()
   -> settle
   -> read actual camera position
+  -> derive yaw/pitch when PTZ unit calibration is configured
   -> resolve zoom to hfov/vfov when a FOV table is configured
   -> capture frame
   -> save frame metadata
@@ -21,8 +22,9 @@ camera profile + capture source + scan settings
 The scan runner writes progress into `scan.json` after each frame. Each frame
 stores the actual position read back from the camera after settling. When a FOV
 table is configured, each frame also stores the interpolated horizontal and
-vertical field of view. If a scan is interrupted, the saved folder still contains
-useful partial data for inspection and debugging.
+vertical field of view. When PTZ unit calibration is configured, each frame also
+stores `yaw_deg` and `pitch_deg`. If a scan is interrupted, the saved folder
+still contains useful partial data for inspection and debugging.
 
 The first supported scan path is:
 

@@ -28,6 +28,7 @@ Debug tools:
 
 - `python -m ptz_pano.tools.camera_ping`
 - `python -m ptz_pano.tools.camera_move`
+- `python -m ptz_pano.tools.camera_raw`
 
 ## `capture`
 
@@ -153,4 +154,3 @@ Current endpoint:
 
 - `GET /health`
 - `GET /scans/{scan_id}`
-

@@ -41,6 +41,7 @@ camera host, RTSP URL, and VISCA port.
 ```powershell
 python -m ptz_pano.tools.camera_ping --config config/camera.local.json
 python -m ptz_pano.tools.plan_scan --config config/camera.local.json
+python -m ptz_pano.tools.camera_raw --config config/camera.local.json --hex "81 01 06 01 18 14 03 03 FF"
 python -m ptz_pano.tools.camera_move --config config/camera.local.json --home
 python -m ptz_pano.tools.capture_frame --config config/camera.local.json --out data/test-frame.jpg
 python -m ptz_pano.tools.run_scan --config config/camera.local.json --scan-id scan_001

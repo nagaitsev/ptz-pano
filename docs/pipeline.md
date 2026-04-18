@@ -11,12 +11,14 @@ camera profile + capture source + scan settings
   -> scan planner
   -> camera move_absolute()
   -> settle
+  -> read actual camera position
   -> capture frame
   -> save frame metadata
   -> completed scan folder
 ```
 
-The scan runner writes progress into `scan.json` after each frame. If a scan is
+The scan runner writes progress into `scan.json` after each frame. Each frame
+stores the actual position read back from the camera after settling. If a scan is
 interrupted, the saved folder still contains useful partial data for inspection
 and debugging.
 
@@ -95,4 +97,3 @@ Each subsystem should remain testable without the rest of the app:
 
 This separation is intentional. It makes it possible to return to one subsystem
 later without disturbing the rest of the project.
-

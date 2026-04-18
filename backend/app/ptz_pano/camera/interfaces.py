@@ -16,6 +16,12 @@ class CameraController(Protocol):
     def move_absolute(self, pose: CameraPose) -> None:
         ...
 
+    def get_position(self) -> CameraPose:
+        ...
+
+    def get_zoom(self) -> int:
+        ...
+
     def set_zoom(self, zoom: int) -> None:
         ...
 
@@ -26,4 +32,3 @@ class CameraController(Protocol):
 class FrameCapture(Protocol):
     def grab_frame(self, output_path: Path) -> Path:
         ...
-

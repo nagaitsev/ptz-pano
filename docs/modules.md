@@ -29,6 +29,7 @@ Debug tools:
 - `python -m ptz_pano.tools.camera_ping`
 - `python -m ptz_pano.tools.camera_move`
 - `python -m ptz_pano.tools.camera_raw`
+- `python -m ptz_pano.tools.camera_status`
 
 ## `capture`
 

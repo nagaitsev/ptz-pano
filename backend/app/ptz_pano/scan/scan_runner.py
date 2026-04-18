@@ -24,10 +24,10 @@ class ScanRunner:
         for index, pose in enumerate(planner.poses(), start=1):
             self.camera.move_absolute(pose)
             time.sleep(self.settle_sec)
+            actual_pose = self.camera.get_position()
             frame_name = f"frame_{index:04d}.jpg"
             self.capture.grab_frame(frames_path / frame_name)
-            document.frames.append(FrameMetadata(index=index, file=f"frames/{frame_name}", pose=pose))
+            document.frames.append(FrameMetadata(index=index, file=f"frames/{frame_name}", pose=actual_pose))
             self.repository.save_document(document)
 
         return scan_path
-

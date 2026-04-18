@@ -1,0 +1,28 @@
+[project]
+name = "ptz-pano"
+version = "0.1.0"
+description = "Modular PTZ camera panorama scanner and viewer backend."
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "opencv-python>=4.9",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.5",
+]
+
+[tool.setuptools]
+package-dir = {"" = "backend/app"}
+
+[tool.setuptools.packages.find]
+where = ["backend/app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+

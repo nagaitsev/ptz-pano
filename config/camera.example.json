@@ -1,0 +1,26 @@
+{
+  "camera": {
+    "vendor": "ptzoptics",
+    "host": "192.168.1.50",
+    "port": 5678,
+    "transport": "tcp",
+    "profile": "ptzoptics-visca-tcp",
+    "timeout_sec": 2.0
+  },
+  "capture": {
+    "kind": "rtsp",
+    "source": "rtsp://192.168.1.50:554/1",
+    "resolution": [1920, 1080]
+  },
+  "scan": {
+    "pan_min": -3000,
+    "pan_max": 3000,
+    "pan_step": 1500,
+    "tilt_min": -500,
+    "tilt_max": 500,
+    "tilt_step": 500,
+    "zoom": 0,
+    "settle_sec": 1.0
+  }
+}
+

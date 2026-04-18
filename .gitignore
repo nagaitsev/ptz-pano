@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+config/*.local.json
+data/projects/*
+data/scans/*
+data/calibration/*
+!data/projects/.gitkeep
+!data/scans/.gitkeep
+!data/calibration/.gitkeep
+
+*.log
+

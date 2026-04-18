@@ -385,15 +385,15 @@
         state.scanData = await fetchJson(`/scans/${state.scanId}`);
         await loadAdjustments();
 
-        const savedScale = Number(localStorage.getItem(scaleStorageKey));
-        const initialScale = Number.isFinite(savedScale) ? savedScale : state.info.target_hfov_scale;
+        const savedScaleRaw = localStorage.getItem(scaleStorageKey);
+        const savedScale = savedScaleRaw === null ? NaN : Number(savedScaleRaw);
+        const initialScale = Number.isFinite(savedScale) ? savedScale : state.info.target_hfov_scale ?? 0.45;
         setHfovScale(initialScale);
         setOffset(yawOffsetInput, localStorage.getItem(yawOffsetStorageKey) ?? "0");
         setOffset(pitchOffsetInput, localStorage.getItem(pitchOffsetStorageKey) ?? "0");
         scanBadge.textContent = state.scanId;
         coverageBadge.textContent = `${state.info.coverage_percent.toFixed(1)}%`;
-        image.src = `${state.info.preview_url}?t=${Date.now()}`;
-        await image.decode();
+        await loadPanoramaImage(`${state.info.preview_url}?t=${Date.now()}`);
         resetView();
         bindEvents();
         update();
@@ -675,6 +675,19 @@
           ? clamp(numeric, Number(input.min), Number(input.max))
           : 0;
         input.value = offset.toFixed(1);
+      }
+
+      async function loadPanoramaImage(url) {
+        image.src = url;
+        if (!image.complete || image.naturalWidth === 0) {
+          await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () => reject(new Error("Не удалось загрузить preview.jpg"));
+          });
+        }
+        if (image.decode) {
+          await image.decode().catch(() => {});
+        }
       }
 
       function renderGrid() {

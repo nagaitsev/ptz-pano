@@ -25,10 +25,14 @@ know how the camera moves.
 `scan` coordinates a controller and a capture source. It writes frame files and
 scan metadata, but does not stitch images.
 
-`calibration` maps camera zoom units to optical field of view. The panorama
-builder consumes this data, but scan execution can run without it.
+`calibration` maps camera zoom units to optical field of view and can store lens
+distortion calibration. The stitching module consumes this data, but scan
+execution can run without it.
 
-`panorama` consumes a completed scan folder. It never moves the camera.
+`stitching` consumes a completed scan folder. It never moves the camera and
+writes panorama artifacts back into the same scan folder.
+
+`panorama` remains as a compatibility import path for older code.
 
 `hotspots` maps panorama coordinates to camera-native PTZ commands.
 
@@ -40,6 +44,5 @@ stays outside FastAPI route handlers.
 1. Verify PTZOptics VISCA TCP commands with `camera_move`.
 2. Verify image capture with `capture_frame`.
 3. Run a small scan and inspect the saved `scan.json`.
-4. Implement and iterate on `panorama` using saved scans only.
+4. Implement and iterate on `stitching` using saved scans only.
 5. Add the frontend viewer and hotspot editor against stable scan artifacts.
-

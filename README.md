@@ -4,16 +4,17 @@ Modular application scaffold for scanning with a PTZ camera, building a spherica
 panorama, and binding panorama hotspots back to camera pan/tilt/zoom positions.
 
 The first target profile is PTZOptics over VISCA TCP. Sony VISCA over IP can be
-added later as another camera profile without changing scan, capture, panorama,
+added later as another camera profile without changing scan, capture, stitching,
 or hotspot logic.
 
 The package is deliberately split into independently debuggable modules:
 
 - `camera`: PTZ command interface and camera-specific profiles.
 - `capture`: RTSP and HTTP snapshot frame capture.
-- `calibration`: zoom-to-FOV tables and interpolation.
+- `calibration`: zoom-to-FOV tables, lens calibration, and interpolation.
 - `scan`: scan grid planning and scan execution.
-- `panorama`: panorama build pipeline entrypoint.
+- `stitching`: panorama assembly from saved scans; safe to iterate without camera access.
+- `panorama`: compatibility import path for older code.
 - `hotspots`: storage for panorama hotspots mapped to PTZ poses.
 - `storage`: scan/project filesystem repositories.
 - `api`: FastAPI boundary for the UI.
@@ -46,7 +47,7 @@ python -m ptz_pano.tools.camera_status --config config/camera.local.json
 python -m ptz_pano.tools.camera_move --config config/camera.local.json --home
 python -m ptz_pano.tools.capture_frame --config config/camera.local.json --out data/test-frame.jpg
 python -m ptz_pano.tools.run_scan --config config/camera.local.json --scan-id scan_001
-python -m ptz_pano.tools.build_panorama --scan data/scans/scan_001
+python -m ptz_pano.tools.build_panorama --scan data/scans/scan_001 --lens-calibration config/lens_calibration.local.json
 ```
 
 ## Viewer
@@ -68,10 +69,10 @@ The yaw/pitch inputs temporarily offset the reticle target in degrees.
 
 ## Current Scope
 
-This is the initial backend skeleton. The VISCA TCP module can send basic raw
-VISCA commands, while panorama composition is intentionally a replaceable
-pipeline stub that writes a manifest. The next implementation step is to build
-the spherical OpenCV compositor against saved scan folders.
+The scan and stitching paths now operate from saved scan folders. The stitching
+module can rebuild `panorama.jpg`, `preview.jpg`, and `panorama_manifest.json`
+without talking to the camera, and the viewer picks up those artifacts after a
+page refresh.
 
 ## Repository Purpose
 

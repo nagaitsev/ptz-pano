@@ -40,6 +40,7 @@ Panorama build mode consumes a completed scan. It should never move the camera.
 
 ```text
 scan.json + frames + FOV table
+  -> optional lens undistortion
   -> feature alignment between neighboring frames
   -> spherical projection
   -> equirectangular panorama
@@ -52,11 +53,9 @@ at a known `pan`, `tilt`, and `zoom`, the compositor can place images on the
 sphere by angle rather than depending entirely on feature matching.
 
 `build_panorama` writes a manifest and, when every frame has `hfov_deg` and
-`vfov_deg`, creates a first-pass `panorama.jpg` plus `preview.jpg` cropped to the
-filled region. The first compositor is a rough equirectangular placement pass
-intended for debugging geometry; it should later be replaced with spherical
-remap and multiband blending. Scans without calibration data are marked
-`missing_fov`.
+`vfov_deg`, creates `panorama.jpg` plus `preview.jpg` cropped to the filled
+region. The stitching package owns this step and can be run repeatedly against
+saved scan folders. Scans without calibration data are marked `missing_fov`.
 
 Feature matching can still be added later as a local refinement step, but it is
 not the primary source of truth. The current first-pass alignment estimates yaw
@@ -106,7 +105,7 @@ Each subsystem should remain testable without the rest of the app:
 - Camera problems: use `camera_ping` and `camera_move`.
 - Capture problems: use `capture_frame`.
 - Scan route problems: use `plan_scan` before `run_scan`.
-- Panorama problems: rebuild from an existing scan folder.
+- Stitching problems: rebuild from an existing scan folder.
 - Hotspot problems: inspect `hotspots.json` and issue a direct camera move.
 
 This separation is intentional. It makes it possible to return to one subsystem

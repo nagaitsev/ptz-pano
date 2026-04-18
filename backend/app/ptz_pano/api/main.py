@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 from time import sleep
 
@@ -13,7 +14,7 @@ from ptz_pano.camera.targeting import CameraTarget, target_to_pose
 from ptz_pano.jsonio import read_json, write_json
 from ptz_pano.models import CameraPose, to_jsonable
 from ptz_pano.storage.scan_repository import ScanRepository
-from ptz_pano.tools.config import build_camera, load_targeting_config
+from ptz_pano.tools.config import build_camera, build_capture, load_targeting_config
 
 app = FastAPI(title="PTZ Pano")
 repository = ScanRepository(Path("data/scans"))
@@ -229,6 +230,165 @@ def clear_adjustments() -> dict:
     if corrections_path.exists():
         corrections_path.unlink()
     return {"status": "cleared"}
+
+
+@app.get("/chessboard", response_class=HTMLResponse)
+def chessboard_page() -> str:
+    return """
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <title>Chessboard</title>
+        <style>
+            :root { --cell-size: 80px; }
+            * { box-sizing: border-box; }
+            body, html {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background: #777;
+            }
+            body {
+                display: grid;
+                place-items: center;
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
+                padding:
+                    max(12px, env(safe-area-inset-top))
+                    max(12px, env(safe-area-inset-right))
+                    max(12px, env(safe-area-inset-bottom))
+                    max(12px, env(safe-area-inset-left));
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(10, var(--cell-size));
+                grid-template-rows: repeat(7, var(--cell-size));
+                width: calc(var(--cell-size) * 10);
+                height: calc(var(--cell-size) * 7);
+                box-shadow: 0 0 0 3px #fff;
+            }
+            .square { width: 100%; height: 100%; }
+            .black { background: black; }
+            .white { background: white; }
+        </style>
+    </head>
+    <body>
+        <div class="grid">
+            <!-- Генерируем 70 квадратов (10x7) -->
+            <script>
+                const grid = document.querySelector('.grid');
+                const columns = 10;
+                const rows = 7;
+                const margin = 24;
+
+                function fitBoard() {
+                    const viewport = window.visualViewport;
+                    const width = viewport ? viewport.width : window.innerWidth;
+                    const height = viewport ? viewport.height : window.innerHeight;
+                    const cell = Math.floor(Math.min((width - margin * 2) / columns, (height - margin * 2) / rows));
+                    document.documentElement.style.setProperty('--cell-size', `${Math.max(12, cell)}px`);
+                }
+
+                for (let r = 0; r < 7; r++) {
+                    for (let c = 0; c < 10; c++) {
+                        const div = document.createElement('div');
+                        div.className = 'square ' + ((r + c) % 2 === 0 ? 'white' : 'black');
+                        grid.appendChild(div);
+                    }
+                }
+
+                fitBoard();
+                window.addEventListener('resize', fitBoard);
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', fitBoard);
+                }
+            </script>
+        </div>
+    </body>
+    </html>
+    """
+
+
+@app.get("/calibrate-lens", response_class=HTMLResponse)
+def calibrate_lens_page() -> str:
+    return (Path(__file__).resolve().parent / "calibrate_lens.html").read_text(encoding="utf-8")
+
+
+@app.post("/calibration/lens/capture")
+def capture_lens_sample() -> dict:
+    camera = build_camera(CAMERA_CONFIG_PATH)
+    capture = build_capture(CAMERA_CONFIG_PATH)
+    try:
+        pose = camera.get_position()
+        zoom = pose.zoom
+        
+        # Создаем папку для образцов
+        sample_dir = Path(f"data/calibration/lens_samples/{zoom}")
+        sample_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = int(time.time())
+        filename = f"{timestamp}.jpg"
+        filepath = sample_dir / filename
+        
+        capture.grab_frame(filepath)
+        
+        img = cv2.imread(str(filepath))
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        found, corners, detector = _find_chessboard_corners(gray, (9, 6))
+        
+        preview_filename = f"preview_{timestamp}.jpg"
+        preview_path = Path(f"data/calibration/lens_samples/previews/{preview_filename}")
+        preview_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if found:
+            cv2.drawChessboardCorners(img, (9, 6), corners, found)
+        
+        cv2.imwrite(str(preview_path), img)
+        
+        return {
+            "status": "ok",
+            "zoom": zoom,
+            "found": found,
+            "detector": detector,
+            "preview_url": f"/calibration/lens/preview/{preview_filename}"
+        }
+    finally:
+        camera.close()
+
+
+@app.get("/calibration/lens/preview/{filename}")
+def get_lens_preview(filename: str) -> FileResponse:
+    path = Path(f"data/calibration/lens_samples/previews/{filename}")
+    if not path.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(path)
+
+
+def _find_chessboard_corners(
+    gray: cv2.typing.MatLike,
+    pattern_size: tuple[int, int],
+) -> tuple[bool, cv2.typing.MatLike | None, str | None]:
+    if hasattr(cv2, "findChessboardCornersSB"):
+        found, corners = cv2.findChessboardCornersSB(
+            gray,
+            pattern_size,
+            cv2.CALIB_CB_NORMALIZE_IMAGE,
+        )
+        if found:
+            return True, corners, "findChessboardCornersSB"
+
+    flags = cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE
+    found, corners = cv2.findChessboardCorners(gray, pattern_size, flags)
+    if not found:
+        return False, None, None
+
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+    return True, refined, "findChessboardCorners"
 
 
 def _latest_scan_id() -> str | None:

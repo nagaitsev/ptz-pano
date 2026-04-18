@@ -1,4 +1,3 @@
-from ptz_pano.panorama.builder import PanoramaBuilder
+from ptz_pano.stitching import PanoramaBuilder
 
 __all__ = ["PanoramaBuilder"]
-

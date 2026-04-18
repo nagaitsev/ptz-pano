@@ -113,23 +113,27 @@ data/scans/<scan-id>/
 This lets the panorama builder, UI, and tests work from saved data without
 touching the real camera.
 
-## `panorama`
+## `stitching`
 
-Owns panorama generation from a saved scan folder.
+Owns panorama generation from a saved scan folder. It never moves the camera and
+can be debugged using only `scan.json` plus saved frame images.
 
-Current implementation writes a manifest placeholder. The intended next step is
-an OpenCV spherical compositor:
+Current implementation:
 
 1. Load `scan.json`.
-2. For each frame, read `pan`, `tilt`, `zoom`, `hfov`, and `vfov`.
-3. Project frame pixels onto the panorama sphere.
-4. Remap into an equirectangular image.
-5. Blend overlaps.
-6. Save `panorama.jpg` and optional tiles.
+2. Optionally undistort frames from lens calibration samples.
+3. Estimate feature alignment between neighboring frames.
+4. Project frame pixels onto the panorama sphere.
+5. Remap into an equirectangular image.
+6. Blend overlaps with feathered weights.
+7. Save `panorama.jpg`, `preview.jpg`, and `panorama_manifest.json`.
 
 Debug tool:
 
 - `python -m ptz_pano.tools.build_panorama`
+
+The historical `panorama` package remains as a compatibility import path and
+re-exports the current stitching classes.
 
 ## `hotspots`
 

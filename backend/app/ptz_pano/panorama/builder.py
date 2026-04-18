@@ -22,9 +22,9 @@ class PanoramaBuilder:
         ]
         status = "ready_for_compositor" if not missing_geometry else "missing_fov"
         output_path = self.repository.scan_path(scan_id) / "panorama" / "panorama_manifest.json"
-        panorama_file = None
+        panorama_result = None
         if not missing_geometry:
-            panorama_file = self.compositor.build(
+            panorama_result = self.compositor.build(
                 self.repository.scan_path(scan_id),
                 document.frames,
                 self.repository.scan_path(scan_id) / "panorama" / "panorama.jpg",
@@ -34,7 +34,16 @@ class PanoramaBuilder:
             {
                 "scan_id": document.id,
                 "status": status,
-                "panorama_file": None if panorama_file is None else str(panorama_file.name),
+                "panorama_file": None
+                if panorama_result is None
+                else str(panorama_result.panorama_path.name),
+                "preview_file": None
+                if panorama_result is None or panorama_result.preview_path is None
+                else str(panorama_result.preview_path.name),
+                "coverage_percent": None
+                if panorama_result is None
+                else panorama_result.coverage_percent,
+                "content_bbox": None if panorama_result is None else panorama_result.content_bbox,
                 "frames": document.frames,
                 "missing_geometry": missing_geometry,
                 "next_step": "Replace simple placement with spherical remap and multiband blending.",

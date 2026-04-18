@@ -21,10 +21,14 @@ without rerunning camera capture or scan planning.
 ```powershell
 .\.venv\Scripts\python.exe backend\app\ptz_pano\tools\build_panorama.py `
   --scan data\scans\test_wide_001 `
-  --lens-calibration config\lens_calibration.local.json
+  --lens-calibration config\lens_calibration.local.json `
+  --projection sphere `
+  --strategy max_weight
 ```
 
 Omit `--lens-calibration` to rebuild with the raw frame images.
+Use `--projection angular` for the previous fast angular remap, or
+`--projection sphere` for the 3D ray projection model.
 
 The main viewer loads the latest `preview.jpg` and manifest from the scan
 folder, so refreshing `http://localhost:8000/` is enough after rebuilding.

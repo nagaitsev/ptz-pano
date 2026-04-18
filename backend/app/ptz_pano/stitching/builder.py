@@ -64,6 +64,10 @@ class PanoramaBuilder:
                 "lens_calibration": None
                 if self.compositor.lens_calibration is None
                 else self.compositor.lens_calibration.summary(),
+                "stitching": {
+                    "strategy": self.compositor.strategy,
+                    "projection": self.compositor.projection,
+                },
                 "frames": compositor_frames,
                 "missing_geometry": missing_geometry,
                 "next_step": "Replace simple placement with spherical remap and multiband blending.",

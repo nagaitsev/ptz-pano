@@ -42,7 +42,7 @@ Panorama build mode consumes a completed scan. It should never move the camera.
 scan.json + frames + FOV table
   -> optional lens undistortion
   -> feature alignment between neighboring frames
-  -> spherical projection
+  -> angular or 3D spherical projection
   -> equirectangular panorama
   -> overlap blending
   -> panorama artifacts
@@ -56,6 +56,9 @@ sphere by angle rather than depending entirely on feature matching.
 `vfov_deg`, creates `panorama.jpg` plus `preview.jpg` cropped to the filled
 region. The stitching package owns this step and can be run repeatedly against
 saved scan folders. Scans without calibration data are marked `missing_fov`.
+The `--projection sphere` mode uses 3D rays and camera yaw/pitch to project onto
+the inside of the sphere; `--projection angular` keeps the previous simpler
+angular remap for comparison.
 
 Feature matching can still be added later as a local refinement step, but it is
 not the primary source of truth. The current first-pass alignment estimates yaw

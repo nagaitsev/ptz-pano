@@ -47,7 +47,7 @@ python -m ptz_pano.tools.camera_status --config config/camera.local.json
 python -m ptz_pano.tools.camera_move --config config/camera.local.json --home
 python -m ptz_pano.tools.capture_frame --config config/camera.local.json --out data/test-frame.jpg
 python -m ptz_pano.tools.run_scan --config config/camera.local.json --scan-id scan_001
-python -m ptz_pano.tools.build_panorama --scan data/scans/scan_001 --lens-calibration config/lens_calibration.local.json
+python -m ptz_pano.tools.build_panorama --scan data/scans/scan_001 --lens-calibration config/lens_calibration.local.json --projection sphere --strategy max_weight
 ```
 
 ## Viewer

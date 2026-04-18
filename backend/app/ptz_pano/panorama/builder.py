@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ptz_pano.jsonio import write_json
+from ptz_pano.models import to_jsonable
+from ptz_pano.panorama.alignment import FeatureAligner
 from ptz_pano.panorama.simple_compositor import SimpleCompositor
 from ptz_pano.storage.scan_repository import ScanRepository
 
@@ -12,6 +14,7 @@ from ptz_pano.storage.scan_repository import ScanRepository
 class PanoramaBuilder:
     repository: ScanRepository
     compositor: SimpleCompositor = SimpleCompositor()
+    aligner: FeatureAligner = FeatureAligner()
 
     def build_manifest(self, scan_id: str) -> Path:
         document = self.repository.load_document(scan_id)
@@ -23,10 +26,17 @@ class PanoramaBuilder:
         status = "ready_for_compositor" if not missing_geometry else "missing_fov"
         output_path = self.repository.scan_path(scan_id) / "panorama" / "panorama_manifest.json"
         panorama_result = None
+        alignment_result = None
+        compositor_frames = document.frames
         if not missing_geometry:
-            panorama_result = self.compositor.build(
+            alignment_result = self.aligner.align(
                 self.repository.scan_path(scan_id),
                 document.frames,
+            )
+            compositor_frames = alignment_result.frames
+            panorama_result = self.compositor.build(
+                self.repository.scan_path(scan_id),
+                compositor_frames,
                 self.repository.scan_path(scan_id) / "panorama" / "panorama.jpg",
             )
         write_json(
@@ -44,7 +54,13 @@ class PanoramaBuilder:
                 if panorama_result is None
                 else panorama_result.coverage_percent,
                 "content_bbox": None if panorama_result is None else panorama_result.content_bbox,
-                "frames": document.frames,
+                "alignment": None
+                if alignment_result is None
+                else {
+                    "applied": alignment_result.applied,
+                    "pairs": to_jsonable(alignment_result.pairs),
+                },
+                "frames": compositor_frames,
                 "missing_geometry": missing_geometry,
                 "next_step": "Replace simple placement with spherical remap and multiband blending.",
             },

@@ -40,6 +40,7 @@ Panorama build mode consumes a completed scan. It should never move the camera.
 
 ```text
 scan.json + frames + FOV table
+  -> feature alignment between neighboring frames
   -> spherical projection
   -> equirectangular panorama
   -> overlap blending
@@ -58,7 +59,9 @@ remap and multiband blending. Scans without calibration data are marked
 `missing_fov`.
 
 Feature matching can still be added later as a local refinement step, but it is
-not the primary source of truth.
+not the primary source of truth. The current first-pass alignment estimates yaw
+corrections between neighboring frames and records those diagnostics in the
+manifest.
 
 ## Hotspot Operation Mode
 

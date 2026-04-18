@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -116,9 +117,16 @@ class PtzOpticsViscaTcpController:
         self.connect()
         assert self._socket is not None
         self._socket.sendall(_ensure_command(command))
-        return self._read_responses(expected_responses=1)
+        return self._read_responses(
+            expected_responses=8,
+            stop_when=_has_information_or_error_response,
+        )
 
-    def _read_responses(self, expected_responses: int = 2) -> list[bytes]:
+    def _read_responses(
+        self,
+        expected_responses: int = 2,
+        stop_when: Callable[[list[bytes]], bool] | None = None,
+    ) -> list[bytes]:
         assert self._socket is not None
         responses: list[bytes] = []
         current = bytearray()
@@ -135,6 +143,8 @@ class PtzOpticsViscaTcpController:
                 if item == VISCA_TERMINATOR:
                     responses.append(bytes(current))
                     current.clear()
+            if stop_when is not None and stop_when(responses):
+                break
             if len(responses) >= expected_responses:
                 break
         return responses
@@ -151,4 +161,17 @@ def _find_information_response(
             raise RuntimeError(f"VISCA inquiry error: {response.hex(' ').upper()}")
     if allow_missing:
         return None
-    raise RuntimeError("VISCA inquiry did not return an information response")
+    raise RuntimeError(
+        "VISCA inquiry did not return an information response"
+        f" (responses: {_format_responses(responses)})"
+    )
+
+
+def _has_information_or_error_response(responses: list[bytes]) -> bool:
+    return any(len(response) >= 3 and response[1] in {0x50, 0x60} for response in responses)
+
+
+def _format_responses(responses: list[bytes]) -> str:
+    if not responses:
+        return "none"
+    return ", ".join(response.hex(" ").upper() for response in responses)

@@ -28,7 +28,11 @@ class ScanRunner:
         for index, pose in enumerate(planner.poses(), start=1):
             self.camera.move_absolute(pose)
             time.sleep(self.settle_sec)
-            actual_pose = self._pose_with_angles(self.camera.get_position())
+            try:
+                actual_pose = self._pose_with_angles(self.camera.get_position())
+            except RuntimeError as exc:
+                print(f"warning: using planned pose for frame {index}: {exc}")
+                actual_pose = self._pose_with_angles(pose)
             hfov_deg, vfov_deg = self._fov_for_zoom(actual_pose.zoom)
             frame_name = f"frame_{index:04d}.jpg"
             self.capture.grab_frame(frames_path / frame_name)

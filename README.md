@@ -113,6 +113,8 @@ the latest scan with a `preview.jpg`, or a specific scan with
 `http://localhost:8000/?scan=<scan-id>`. The `k` slider temporarily scales the
 target field of view before choosing camera zoom; lower values zoom in more.
 The yaw/pitch inputs temporarily offset the reticle target in degrees.
+The `Настройки` button opens scan/stitch controls for rebuilding the current
+panorama or capturing a new scan and stitching it.
 
 ## Current Scope
 

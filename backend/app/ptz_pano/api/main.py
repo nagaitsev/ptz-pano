@@ -1,25 +1,45 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 from pathlib import Path
 from time import sleep
+from typing import Callable, Literal
+from uuid import uuid4
 
 import cv2
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
+from ptz_pano.calibration import FovTable
+from ptz_pano.calibration.lens_table import LensCalibration
 from ptz_pano.camera.targeting import CameraTarget, target_to_pose
 from ptz_pano.jsonio import read_json, write_json
-from ptz_pano.models import CameraPose, to_jsonable
+from ptz_pano.models import CameraPose, ScanDocument, to_jsonable
+from ptz_pano.scan import ScanPlanConfig, ScanPlanner, ScanRunner
 from ptz_pano.storage.scan_repository import ScanRepository
-from ptz_pano.tools.config import build_camera, build_capture, load_targeting_config
+from ptz_pano.stitching import PanoramaBuilder
+from ptz_pano.stitching.simple_compositor import SimpleCompositor
+from ptz_pano.tools.config import (
+    build_camera,
+    build_capture,
+    load_app_config,
+    load_camera_config,
+    load_capture_config,
+    load_targeting_config,
+)
 
 app = FastAPI(title="PTZ Pano")
 repository = ScanRepository(Path("data/scans"))
 CAMERA_CONFIG_PATH = Path(os.environ.get("PTZ_PANO_CAMERA_CONFIG", "config/camera.local.json"))
 TARGET_HFOV_SCALE = float(os.environ.get("PTZ_PANO_TARGET_HFOV_SCALE", "0.45"))
+DEFAULT_LENS_CALIBRATION_PATH = Path(
+    os.environ.get("PTZ_PANO_LENS_CALIBRATION", "config/lens_calibration.local.json")
+)
+_jobs: dict[str, dict] = {}
+_jobs_lock = threading.Lock()
 
 
 @app.get("/health")
@@ -49,6 +69,72 @@ def latest_scan() -> dict[str, str]:
     if scan_id is None:
         raise HTTPException(status_code=404, detail="no scans with panorama preview found")
     return {"id": scan_id}
+
+
+class StitchRequest(BaseModel):
+    scan_id: str
+    strategy: Literal["average", "max_weight"] = "max_weight"
+    projection: Literal["angular", "sphere"] = "sphere"
+    use_lens_calibration: bool = True
+    lens_calibration_path: str | None = None
+
+
+class ScanAndStitchRequest(BaseModel):
+    scan_id: str | None = None
+    stitch_after: bool = True
+    strategy: Literal["average", "max_weight"] = "max_weight"
+    projection: Literal["angular", "sphere"] = "sphere"
+    use_lens_calibration: bool = True
+    lens_calibration_path: str | None = None
+
+
+@app.post("/api/stitch")
+def start_stitch_job(request: StitchRequest) -> dict:
+    if not repository.scan_path(request.scan_id).exists():
+        raise HTTPException(status_code=404, detail="scan not found")
+    job_id = _start_job(
+        "stitch",
+        lambda: _build_panorama(
+            scan_id=request.scan_id,
+            strategy=request.strategy,
+            projection=request.projection,
+            use_lens_calibration=request.use_lens_calibration,
+            lens_calibration_path=request.lens_calibration_path,
+        ),
+    )
+    return {"job_id": job_id}
+
+
+@app.post("/api/scan-and-stitch")
+def start_scan_and_stitch_job(request: ScanAndStitchRequest) -> dict:
+    scan_id = request.scan_id or time.strftime("scan_%Y%m%d_%H%M%S")
+    if repository.scan_path(scan_id).exists():
+        raise HTTPException(status_code=409, detail="scan already exists")
+
+    def run() -> dict:
+        scan_path = _run_scan(scan_id)
+        result: dict = {"scan_id": scan_id, "scan_path": str(scan_path)}
+        if request.stitch_after:
+            result["panorama"] = _build_panorama(
+                scan_id=scan_id,
+                strategy=request.strategy,
+                projection=request.projection,
+                use_lens_calibration=request.use_lens_calibration,
+                lens_calibration_path=request.lens_calibration_path,
+            )
+        return result
+
+    job_id = _start_job("scan_and_stitch", run)
+    return {"job_id": job_id, "scan_id": scan_id}
+
+
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str) -> dict:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="job not found")
+        return dict(job)
 
 
 @app.get("/scans/{scan_id}/panorama/{filename}")
@@ -389,6 +475,111 @@ def _find_chessboard_corners(
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
     return True, refined, "findChessboardCorners"
+
+
+def _start_job(kind: str, target: Callable[[], dict]) -> str:
+    job_id = uuid4().hex
+    with _jobs_lock:
+        _jobs[job_id] = {
+            "id": job_id,
+            "kind": kind,
+            "status": "queued",
+            "started_at": None,
+            "finished_at": None,
+            "result": None,
+            "error": None,
+        }
+
+    def run_job() -> None:
+        with _jobs_lock:
+            _jobs[job_id]["status"] = "running"
+            _jobs[job_id]["started_at"] = time.time()
+        try:
+            result = target()
+        except Exception as exc:
+            with _jobs_lock:
+                _jobs[job_id]["status"] = "error"
+                _jobs[job_id]["finished_at"] = time.time()
+                _jobs[job_id]["error"] = str(exc)
+        else:
+            with _jobs_lock:
+                _jobs[job_id]["status"] = "done"
+                _jobs[job_id]["finished_at"] = time.time()
+                _jobs[job_id]["result"] = result
+
+    thread = threading.Thread(target=run_job, daemon=True)
+    thread.start()
+    return job_id
+
+
+def _run_scan(scan_id: str) -> Path:
+    raw_config = load_app_config(CAMERA_CONFIG_PATH)
+    fov_table = None
+    pan_units_per_degree = None
+    tilt_units_per_degree = None
+    calibration_config = raw_config.get("calibration")
+    if calibration_config:
+        if calibration_config.get("fov_table"):
+            fov_table = FovTable.load(Path(calibration_config["fov_table"]))
+        pan_units_per_degree = calibration_config.get("pan_units_per_degree")
+        tilt_units_per_degree = calibration_config.get("tilt_units_per_degree")
+
+    raw_scan_config = dict(raw_config["scan"])
+    settle_sec = raw_scan_config.pop("settle_sec", 1.0)
+    scan_config = ScanPlanConfig(**raw_scan_config)
+    document = ScanDocument(
+        id=scan_id,
+        camera=load_camera_config(CAMERA_CONFIG_PATH),
+        capture=load_capture_config(CAMERA_CONFIG_PATH),
+    )
+
+    camera = build_camera(CAMERA_CONFIG_PATH)
+    capture = build_capture(CAMERA_CONFIG_PATH)
+    runner = ScanRunner(
+        camera=camera,
+        capture=capture,
+        repository=repository,
+        settle_sec=settle_sec,
+        fov_table=fov_table,
+        pan_units_per_degree=pan_units_per_degree,
+        tilt_units_per_degree=tilt_units_per_degree,
+    )
+    try:
+        return runner.run(document, ScanPlanner(scan_config))
+    finally:
+        camera.close()
+
+
+def _build_panorama(
+    scan_id: str,
+    strategy: Literal["average", "max_weight"],
+    projection: Literal["angular", "sphere"],
+    use_lens_calibration: bool,
+    lens_calibration_path: str | None,
+) -> dict:
+    lens_calibration = None
+    resolved_lens_path = None
+    if use_lens_calibration:
+        candidate = Path(lens_calibration_path) if lens_calibration_path else DEFAULT_LENS_CALIBRATION_PATH
+        if candidate.exists():
+            lens_calibration = LensCalibration.from_file(candidate)
+            resolved_lens_path = str(candidate)
+
+    compositor = SimpleCompositor(
+        lens_calibration=lens_calibration,
+        strategy=strategy,
+        projection=projection,
+    )
+    manifest_path = PanoramaBuilder(repository, compositor=compositor).build_manifest(scan_id)
+    return {
+        "scan_id": scan_id,
+        "manifest_path": str(manifest_path),
+        "preview_url": f"/scans/{scan_id}/panorama/preview.jpg",
+        "panorama_url": f"/scans/{scan_id}/panorama/panorama.jpg",
+        "strategy": strategy,
+        "projection": projection,
+        "lens_calibration_path": resolved_lens_path,
+    }
 
 
 def _latest_scan_id() -> str | None:

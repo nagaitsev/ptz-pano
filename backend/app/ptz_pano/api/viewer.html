@@ -150,7 +150,8 @@
       .toolbar button,
       .toolbar .readout,
       .toolbar .scale-control,
-      .toolbar .offset-control {
+      .toolbar .offset-control,
+      .settings-panel {
         pointer-events: auto;
       }
 
@@ -272,6 +273,64 @@
         text-overflow: ellipsis;
       }
 
+      .settings-panel {
+        position: fixed;
+        right: max(16px, env(safe-area-inset-right));
+        bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px);
+        width: min(420px, calc(100vw - 32px));
+        display: none;
+        padding: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 8px;
+        background: rgba(12, 12, 12, 0.92);
+        color: rgba(255, 255, 255, 0.9);
+        z-index: 150;
+      }
+
+      .settings-panel.open {
+        display: block;
+      }
+
+      .settings-panel h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+
+      .settings-panel label {
+        display: grid;
+        gap: 4px;
+        margin: 8px 0;
+        font-size: 13px;
+      }
+
+      .settings-panel input,
+      .settings-panel select {
+        min-height: 38px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.36);
+        color: #fff;
+        font: inherit;
+        padding: 6px 8px;
+      }
+
+      .settings-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .settings-status {
+        margin-top: 10px;
+        min-height: 36px;
+        padding: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.78);
+      }
+
       @media (max-width: 720px) {
         .toolbar {
           grid-template-columns: 48px 48px 1fr;
@@ -308,6 +367,7 @@
     </div>
     <div class="toolbar">
       <button id="toggleGrid" type="button" style="padding: 0 8px; font-size: 11px;">Сетка</button>
+      <button id="settingsButton" type="button" style="padding: 0 10px; font-size: 12px;">Настройки</button>
       <button id="adjustButton" type="button" style="display: none; background: #7a1f1f; border-color: rgba(255, 255, 255, 0.32);">Привязать к центру</button>
       <button id="clearAdjustments" type="button" style="display: none; background: #444; border-color: rgba(255, 255, 255, 0.2);">Очистить</button>
       <div id="calibrationReadout" class="readout" style="display: none; border-color: #7a1f1f; color: #ff9999; font-family: monospace; font-size: 11px;"></div>
@@ -327,6 +387,39 @@
       <div id="readout" class="readout">yaw 0.0 / pitch 0.0</div>
       <button id="targetButton" type="button">Навести камеру</button>
     </div>
+    <section id="settingsPanel" class="settings-panel" aria-label="Настройки">
+      <h2>Настройки</h2>
+      <label>
+        ID новой съемки
+        <input id="settingsScanId" type="text" placeholder="scan_20260418_120000" />
+      </label>
+      <label>
+        Проекция
+        <select id="settingsProjection">
+          <option value="sphere" selected>sphere</option>
+          <option value="angular">angular</option>
+        </select>
+      </label>
+      <label>
+        Склейка
+        <select id="settingsStrategy">
+          <option value="max_weight" selected>max_weight</option>
+          <option value="average">average</option>
+        </select>
+      </label>
+      <label>
+        <span>
+          <input id="settingsUseLens" type="checkbox" checked />
+          использовать lens calibration
+        </span>
+      </label>
+      <div class="settings-actions">
+        <button id="stitchButton" type="button">Склеить текущую</button>
+        <button id="scanAndStitchButton" type="button">Снять и склеить</button>
+        <button id="settingsClose" type="button">Закрыть</button>
+      </div>
+      <div id="settingsStatus" class="settings-status">Готово</div>
+    </section>
 
     <script>
       const viewport = document.querySelector("#viewport");
@@ -337,6 +430,16 @@
       const scanBadge = document.querySelector("#scanBadge");
       const coverageBadge = document.querySelector("#coverageBadge");
       const targetButton = document.querySelector("#targetButton");
+      const settingsButton = document.querySelector("#settingsButton");
+      const settingsPanel = document.querySelector("#settingsPanel");
+      const settingsClose = document.querySelector("#settingsClose");
+      const settingsScanId = document.querySelector("#settingsScanId");
+      const settingsProjection = document.querySelector("#settingsProjection");
+      const settingsStrategy = document.querySelector("#settingsStrategy");
+      const settingsUseLens = document.querySelector("#settingsUseLens");
+      const settingsStatus = document.querySelector("#settingsStatus");
+      const stitchButton = document.querySelector("#stitchButton");
+      const scanAndStitchButton = document.querySelector("#scanAndStitchButton");
       const toggleGridButton = document.querySelector("#toggleGrid");
       const adjustButton = document.querySelector("#adjustButton");
       const clearAdjustmentsButton = document.querySelector("#clearAdjustments");
@@ -417,6 +520,16 @@
           
           renderGrid();
         });
+
+        settingsButton.addEventListener("click", () => {
+          settingsPanel.classList.toggle("open");
+          if (!settingsScanId.value) {
+            settingsScanId.value = defaultScanId();
+          }
+        });
+        settingsClose.addEventListener("click", () => settingsPanel.classList.remove("open"));
+        stitchButton.addEventListener("click", () => startStitchJob());
+        scanAndStitchButton.addEventListener("click", () => startScanAndStitchJob());
 
         clearAdjustmentsButton.addEventListener("click", async () => {
           if (!confirm("Удалить все сохраненные точки коррекции?")) return;
@@ -591,6 +704,84 @@
           targetButton.disabled = false;
           targetButton.textContent = "Навести камеру";
         }
+      }
+
+      async function startStitchJob() {
+        setSettingsBusy(true, "Запуск склейки текущей панорамы...");
+        try {
+          const response = await fetchJson("/api/stitch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              scan_id: state.scanId,
+              projection: settingsProjection.value,
+              strategy: settingsStrategy.value,
+              use_lens_calibration: settingsUseLens.checked,
+            }),
+          });
+          monitorJob(response.job_id);
+        } catch (error) {
+          setSettingsBusy(false, error.message);
+        }
+      }
+
+      async function startScanAndStitchJob() {
+        const scanId = settingsScanId.value.trim() || defaultScanId();
+        settingsScanId.value = scanId;
+        setSettingsBusy(true, `Запуск съемки ${scanId}...`);
+        try {
+          const response = await fetchJson("/api/scan-and-stitch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              scan_id: scanId,
+              stitch_after: true,
+              projection: settingsProjection.value,
+              strategy: settingsStrategy.value,
+              use_lens_calibration: settingsUseLens.checked,
+            }),
+          });
+          monitorJob(response.job_id);
+        } catch (error) {
+          setSettingsBusy(false, error.message);
+        }
+      }
+
+      function monitorJob(jobId) {
+        const timer = setInterval(async () => {
+          try {
+            const job = await fetchJson(`/api/jobs/${jobId}`);
+            if (job.status === "running" || job.status === "queued") {
+              settingsStatus.textContent = `${job.kind}: ${job.status}`;
+              return;
+            }
+            clearInterval(timer);
+            if (job.status === "done") {
+              const scanId = job.result?.scan_id || job.result?.panorama?.scan_id || state.scanId;
+              settingsStatus.textContent = `Готово: ${scanId}. Обновляю панораму...`;
+              setTimeout(() => {
+                location.href = `/?scan=${encodeURIComponent(scanId)}&t=${Date.now()}`;
+              }, 700);
+              return;
+            }
+            setSettingsBusy(false, `Ошибка: ${job.error || "неизвестная ошибка"}`);
+          } catch (error) {
+            clearInterval(timer);
+            setSettingsBusy(false, error.message);
+          }
+        }, 1000);
+      }
+
+      function setSettingsBusy(isBusy, message) {
+        settingsStatus.textContent = message;
+        stitchButton.disabled = isBusy;
+        scanAndStitchButton.disabled = isBusy;
+      }
+
+      function defaultScanId() {
+        const now = new Date();
+        const pad = (value) => String(value).padStart(2, "0");
+        return `scan_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       }
 
       function update() {

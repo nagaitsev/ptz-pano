@@ -58,7 +58,8 @@ class PanoramaBuilder:
                 if alignment_result is None
                 else {
                     "applied": alignment_result.applied,
-                    "pairs": to_jsonable(alignment_result.pairs),
+                    "horizontal_pairs": to_jsonable(alignment_result.horizontal_pairs),
+                    "vertical_pairs": to_jsonable(alignment_result.vertical_pairs),
                 },
                 "frames": compositor_frames,
                 "missing_geometry": missing_geometry,

@@ -60,8 +60,8 @@ remap and multiband blending. Scans without calibration data are marked
 
 Feature matching can still be added later as a local refinement step, but it is
 not the primary source of truth. The current first-pass alignment estimates yaw
-corrections between neighboring frames and records those diagnostics in the
-manifest.
+corrections within rows and pitch corrections between rows, then records those
+diagnostics in the manifest.
 
 ## Hotspot Operation Mode
 

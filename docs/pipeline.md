@@ -48,9 +48,11 @@ The core idea is to use PTZ metadata as geometry. Since each frame was captured
 at a known `pan`, `tilt`, and `zoom`, the compositor can place images on the
 sphere by angle rather than depending entirely on feature matching.
 
-`build_panorama` currently writes a manifest. The manifest status is
-`ready_for_compositor` only when every frame has `hfov_deg` and `vfov_deg`; scans
-without calibration data are marked `missing_fov`.
+`build_panorama` writes a manifest and, when every frame has `hfov_deg` and
+`vfov_deg`, creates a first-pass `panorama.jpg`. The first compositor is a rough
+equirectangular placement pass intended for debugging geometry; it should later
+be replaced with spherical remap and multiband blending. Scans without
+calibration data are marked `missing_fov`.
 
 Feature matching can still be added later as a local refinement step, but it is
 not the primary source of truth.

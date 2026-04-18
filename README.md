@@ -62,7 +62,8 @@ uvicorn ptz_pano.api.main:app --host 0.0.0.0 --port 8000
 Open `http://localhost:8000/`. Use mouse wheel or pinch to zoom, drag to pan, and
 press `Навести камеру` to move the camera to the center reticle. The viewer uses
 the latest scan with a `preview.jpg`, or a specific scan with
-`http://localhost:8000/?scan=<scan-id>`.
+`http://localhost:8000/?scan=<scan-id>`. The `k` slider temporarily scales the
+target field of view before choosing camera zoom; lower values zoom in more.
 
 ## Current Scope
 

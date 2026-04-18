@@ -91,14 +91,15 @@
         right: max(16px, env(safe-area-inset-right));
         bottom: max(16px, env(safe-area-inset-bottom));
         display: grid;
-        grid-template-columns: auto auto 1fr auto;
+        grid-template-columns: auto auto minmax(180px, 280px) 1fr auto;
         gap: 8px;
         align-items: center;
         pointer-events: none;
       }
 
       .toolbar button,
-      .toolbar .readout {
+      .toolbar .readout,
+      .toolbar .scale-control {
         pointer-events: auto;
       }
 
@@ -143,6 +144,31 @@
         font-size: 14px;
       }
 
+      .scale-control {
+        min-height: 44px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 0 10px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: rgba(12, 12, 12, 0.72);
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 13px;
+      }
+
+      .scale-control input {
+        width: 100%;
+        accent-color: #1f7a4d;
+      }
+
+      #scaleValue {
+        min-width: 42px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
       .topline {
         position: fixed;
         left: max(16px, env(safe-area-inset-left));
@@ -175,6 +201,10 @@
           grid-template-columns: 48px 48px 1fr;
         }
 
+        .scale-control {
+          grid-column: 1 / -1;
+        }
+
         #targetButton {
           grid-column: 1 / -1;
         }
@@ -197,6 +227,11 @@
     <div class="toolbar">
       <button id="zoomOut" class="zoom-button" type="button">-</button>
       <button id="zoomIn" class="zoom-button" type="button">+</button>
+      <label class="scale-control">
+        <span>k</span>
+        <input id="hfovScale" type="range" min="0.45" max="1.1" step="0.05" value="0.75" />
+        <span id="scaleValue">0.75</span>
+      </label>
       <div id="readout" class="readout">yaw 0.0 / pitch 0.0</div>
       <button id="targetButton" type="button">Навести камеру</button>
     </div>
@@ -210,6 +245,9 @@
       const targetButton = document.querySelector("#targetButton");
       const zoomInButton = document.querySelector("#zoomIn");
       const zoomOutButton = document.querySelector("#zoomOut");
+      const hfovScaleInput = document.querySelector("#hfovScale");
+      const scaleValue = document.querySelector("#scaleValue");
+      const scaleStorageKey = "ptz-pano-target-hfov-scale";
 
       const state = {
         scanId: null,
@@ -237,6 +275,9 @@
         }
 
         state.info = await fetchJson(`/scans/${state.scanId}/panorama-info`);
+        const savedScale = Number(localStorage.getItem(scaleStorageKey));
+        const initialScale = Number.isFinite(savedScale) ? savedScale : state.info.target_hfov_scale;
+        setHfovScale(initialScale);
         scanBadge.textContent = state.scanId;
         coverageBadge.textContent = `${state.info.coverage_percent.toFixed(1)}%`;
         image.src = `${state.info.preview_url}?t=${Date.now()}`;
@@ -284,6 +325,11 @@
         zoomInButton.addEventListener("click", () => zoomAt(innerWidth / 2, innerHeight / 2, 1.35));
         zoomOutButton.addEventListener("click", () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.35));
         targetButton.addEventListener("click", moveCamera);
+        hfovScaleInput.addEventListener("input", () => {
+          setHfovScale(Number(hfovScaleInput.value));
+          localStorage.setItem(scaleStorageKey, hfovScaleInput.value);
+          update();
+        });
       }
 
       function resetView() {
@@ -389,7 +435,7 @@
         const fullY = bbox[1] + (y / image.naturalHeight) * bboxHeight;
         const visiblePreviewWidth = Math.min(innerWidth / state.scale, image.naturalWidth);
         const visibleFullWidth = (visiblePreviewWidth / image.naturalWidth) * bboxWidth;
-        const targetHfovScale = state.info.target_hfov_scale ?? 1;
+        const targetHfovScale = Number(hfovScaleInput.value);
         const targetHfov = clamp((visibleFullWidth / panoramaSize[0]) * 360 * targetHfovScale, 2, 120);
         return {
           yaw_deg: (fullX / panoramaSize[0]) * 360 - 180,
@@ -437,6 +483,12 @@
 
       function clamp(value, low, high) {
         return Math.max(low, Math.min(high, value));
+      }
+
+      function setHfovScale(value) {
+        const scale = clamp(value, Number(hfovScaleInput.min), Number(hfovScaleInput.max));
+        hfovScaleInput.value = scale.toFixed(2);
+        scaleValue.textContent = scale.toFixed(2);
       }
 
       async function fetchJson(url, options) {

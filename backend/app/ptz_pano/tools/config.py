@@ -5,6 +5,8 @@ from typing import Any
 
 from ptz_pano.capture import RtspCapture, SnapshotCapture
 from ptz_pano.camera.ptzoptics_visca_tcp import PtzOpticsViscaTcpController
+from ptz_pano.camera.targeting import TargetingConfig
+from ptz_pano.calibration import FovTable
 from ptz_pano.jsonio import read_json
 from ptz_pano.models import CameraConfig, CaptureConfig
 
@@ -26,6 +28,19 @@ def load_capture_config(path: Path) -> CaptureConfig:
     return CaptureConfig(**capture)
 
 
+def load_targeting_config(path: Path) -> TargetingConfig:
+    data = load_app_config(path)
+    calibration = data.get("calibration", {})
+    fov_table = None
+    if calibration.get("fov_table"):
+        fov_table = FovTable.load(Path(calibration["fov_table"]))
+    return TargetingConfig(
+        pan_units_per_degree=calibration.get("pan_units_per_degree", 14.4),
+        tilt_units_per_degree=calibration.get("tilt_units_per_degree", 14.4),
+        fov_table=fov_table,
+    )
+
+
 def build_camera(path: Path) -> PtzOpticsViscaTcpController:
     config = load_camera_config(path)
     if config.profile != "ptzoptics-visca-tcp":
@@ -40,4 +55,3 @@ def build_capture(path: Path):
     if config.kind == "snapshot":
         return SnapshotCapture(config.source)
     raise ValueError(f"unsupported capture kind: {config.kind}")
-

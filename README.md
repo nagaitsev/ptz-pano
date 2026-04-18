@@ -49,6 +49,20 @@ python -m ptz_pano.tools.run_scan --config config/camera.local.json --scan-id sc
 python -m ptz_pano.tools.build_panorama --scan data/scans/scan_001
 ```
 
+## Viewer
+
+After building a panorama, start the backend and open the viewer:
+
+```powershell
+$env:PTZ_PANO_CAMERA_CONFIG='config/camera.local.json'
+uvicorn ptz_pano.api.main:app --host 0.0.0.0 --port 8000
+```
+
+Open `http://localhost:8000/`. Use mouse wheel or pinch to zoom, drag to pan, and
+press `Навести камеру` to move the camera to the center reticle. The viewer uses
+the latest scan with a `preview.jpg`, or a specific scan with
+`http://localhost:8000/?scan=<scan-id>`.
+
 ## Current Scope
 
 This is the initial backend skeleton. The VISCA TCP module can send basic raw

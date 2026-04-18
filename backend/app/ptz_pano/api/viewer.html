@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PTZ Pano</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #050505;
+        color: #f4f4f4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        touch-action: none;
+      }
+
+      body {
+        background: #050505;
+      }
+
+      #viewport {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+      }
+
+      #viewport.dragging {
+        cursor: grabbing;
+      }
+
+      #panorama {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+        will-change: transform;
+        pointer-events: none;
+        max-width: none;
+      }
+
+      .reticle {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        width: 46px;
+        height: 46px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+
+      .reticle::before,
+      .reticle::after {
+        content: "";
+        position: absolute;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+      }
+
+      .reticle::before {
+        left: 22px;
+        top: 0;
+        width: 2px;
+        height: 46px;
+      }
+
+      .reticle::after {
+        left: 0;
+        top: 22px;
+        width: 46px;
+        height: 2px;
+      }
+
+      .toolbar {
+        position: fixed;
+        left: max(16px, env(safe-area-inset-left));
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(16px, env(safe-area-inset-bottom));
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        pointer-events: none;
+      }
+
+      .toolbar button,
+      .toolbar .readout {
+        pointer-events: auto;
+      }
+
+      button {
+        min-height: 44px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: 8px;
+        background: rgba(12, 12, 12, 0.82);
+        color: #f7f7f7;
+        font: inherit;
+        font-weight: 650;
+        padding: 0 16px;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .zoom-button {
+        width: 48px;
+        padding: 0;
+        font-size: 22px;
+      }
+
+      #targetButton {
+        background: #1f7a4d;
+        border-color: rgba(255, 255, 255, 0.32);
+        white-space: nowrap;
+      }
+
+      .readout {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: rgba(12, 12, 12, 0.72);
+        color: rgba(255, 255, 255, 0.86);
+        overflow: hidden;
+        white-space: nowrap;
+        font-size: 14px;
+      }
+
+      .topline {
+        position: fixed;
+        left: max(16px, env(safe-area-inset-left));
+        right: max(16px, env(safe-area-inset-right));
+        top: max(16px, env(safe-area-inset-top));
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      .badge {
+        max-width: 100%;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: rgba(12, 12, 12, 0.58);
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 13px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      @media (max-width: 720px) {
+        .toolbar {
+          grid-template-columns: 48px 48px 1fr;
+        }
+
+        #targetButton {
+          grid-column: 1 / -1;
+        }
+
+        .readout {
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="viewport" aria-label="Панорама">
+      <img id="panorama" alt="" decoding="async" draggable="false" />
+    </main>
+    <div class="reticle" aria-hidden="true"></div>
+    <div class="topline">
+      <div id="scanBadge" class="badge">Загрузка</div>
+      <div id="coverageBadge" class="badge"></div>
+    </div>
+    <div class="toolbar">
+      <button id="zoomOut" class="zoom-button" type="button">-</button>
+      <button id="zoomIn" class="zoom-button" type="button">+</button>
+      <div id="readout" class="readout">yaw 0.0 / pitch 0.0</div>
+      <button id="targetButton" type="button">Навести камеру</button>
+    </div>
+
+    <script>
+      const viewport = document.querySelector("#viewport");
+      const image = document.querySelector("#panorama");
+      const readout = document.querySelector("#readout");
+      const scanBadge = document.querySelector("#scanBadge");
+      const coverageBadge = document.querySelector("#coverageBadge");
+      const targetButton = document.querySelector("#targetButton");
+      const zoomInButton = document.querySelector("#zoomIn");
+      const zoomOutButton = document.querySelector("#zoomOut");
+
+      const state = {
+        scanId: null,
+        info: null,
+        scale: 1,
+        minScale: 1,
+        maxScale: 12,
+        x: 0,
+        y: 0,
+        pointers: new Map(),
+        gesture: null,
+      };
+
+      init().catch((error) => {
+        scanBadge.textContent = "Ошибка загрузки";
+        readout.textContent = error.message;
+      });
+
+      async function init() {
+        const params = new URLSearchParams(location.search);
+        state.scanId = params.get("scan");
+        if (!state.scanId) {
+          const latest = await fetchJson("/api/latest-scan");
+          state.scanId = latest.id;
+        }
+
+        state.info = await fetchJson(`/scans/${state.scanId}/panorama-info`);
+        scanBadge.textContent = state.scanId;
+        coverageBadge.textContent = `${state.info.coverage_percent.toFixed(1)}%`;
+        image.src = `${state.info.preview_url}?t=${Date.now()}`;
+        await image.decode();
+        resetView();
+        bindEvents();
+        update();
+      }
+
+      function bindEvents() {
+        addEventListener("resize", () => {
+          resetView();
+          update();
+        });
+
+        viewport.addEventListener("wheel", (event) => {
+          event.preventDefault();
+          const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+          zoomAt(event.clientX, event.clientY, factor);
+        }, { passive: false });
+
+        viewport.addEventListener("pointerdown", (event) => {
+          viewport.setPointerCapture(event.pointerId);
+          state.pointers.set(event.pointerId, point(event));
+          viewport.classList.add("dragging");
+          startGesture();
+        });
+
+        viewport.addEventListener("pointermove", (event) => {
+          if (!state.pointers.has(event.pointerId)) return;
+          state.pointers.set(event.pointerId, point(event));
+          moveGesture();
+        });
+
+        for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          viewport.addEventListener(name, (event) => {
+            state.pointers.delete(event.pointerId);
+            if (state.pointers.size === 0) {
+              viewport.classList.remove("dragging");
+            }
+            startGesture();
+          });
+        }
+
+        zoomInButton.addEventListener("click", () => zoomAt(innerWidth / 2, innerHeight / 2, 1.35));
+        zoomOutButton.addEventListener("click", () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.35));
+        targetButton.addEventListener("click", moveCamera);
+      }
+
+      function resetView() {
+        const fitScale = Math.max(innerWidth / image.naturalWidth, innerHeight / image.naturalHeight);
+        state.minScale = fitScale;
+        state.maxScale = fitScale * 16;
+        state.scale = fitScale;
+        state.x = (innerWidth - image.naturalWidth * state.scale) / 2;
+        state.y = (innerHeight - image.naturalHeight * state.scale) / 2;
+        clampOffset();
+      }
+
+      function startGesture() {
+        const points = [...state.pointers.values()];
+        if (points.length === 1) {
+          state.gesture = {
+            type: "pan",
+            start: points[0],
+            x: state.x,
+            y: state.y,
+          };
+        } else if (points.length >= 2) {
+          const pair = [points[0], points[1]];
+          state.gesture = {
+            type: "pinch",
+            center: midpoint(pair),
+            distance: distance(pair),
+            scale: state.scale,
+            imagePoint: screenToImage(midpoint(pair)),
+          };
+        } else {
+          state.gesture = null;
+        }
+      }
+
+      function moveGesture() {
+        if (!state.gesture) return;
+        const points = [...state.pointers.values()];
+        if (state.gesture.type === "pan" && points.length === 1) {
+          const current = points[0];
+          state.x = state.gesture.x + current.x - state.gesture.start.x;
+          state.y = state.gesture.y + current.y - state.gesture.start.y;
+          clampOffset();
+          update();
+        }
+        if (state.gesture.type === "pinch" && points.length >= 2) {
+          const pair = [points[0], points[1]];
+          const center = midpoint(pair);
+          const factor = distance(pair) / state.gesture.distance;
+          state.scale = clamp(state.gesture.scale * factor, state.minScale, state.maxScale);
+          state.x = center.x - state.gesture.imagePoint.x * state.scale;
+          state.y = center.y - state.gesture.imagePoint.y * state.scale;
+          clampOffset();
+          update();
+        }
+      }
+
+      function zoomAt(screenX, screenY, factor) {
+        const before = screenToImage({ x: screenX, y: screenY });
+        state.scale = clamp(state.scale * factor, state.minScale, state.maxScale);
+        state.x = screenX - before.x * state.scale;
+        state.y = screenY - before.y * state.scale;
+        clampOffset();
+        update();
+      }
+
+      async function moveCamera() {
+        const target = currentTarget();
+        targetButton.disabled = true;
+        targetButton.textContent = "Наведение";
+        try {
+          const response = await fetchJson("/camera/target", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...target, execute: true }),
+          });
+          const pose = response.command_pose;
+          readout.textContent = `pan ${pose.pan} / tilt ${pose.tilt} / zoom ${pose.zoom}`;
+        } catch (error) {
+          readout.textContent = error.message;
+        } finally {
+          targetButton.disabled = false;
+          targetButton.textContent = "Навести камеру";
+        }
+      }
+
+      function update() {
+        image.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+        const target = currentTarget();
+        readout.textContent =
+          `yaw ${target.yaw_deg.toFixed(1)} / pitch ${target.pitch_deg.toFixed(1)} / fov ${target.target_hfov_deg.toFixed(1)}`;
+      }
+
+      function currentTarget() {
+        const center = screenToImage({ x: innerWidth / 2, y: innerHeight / 2 });
+        const x = clamp(center.x, 0, image.naturalWidth - 1);
+        const y = clamp(center.y, 0, image.naturalHeight - 1);
+        const bbox = state.info.content_bbox;
+        const panoramaSize = state.info.panorama_size;
+        const bboxWidth = bbox[2] - bbox[0] + 1;
+        const bboxHeight = bbox[3] - bbox[1] + 1;
+        const fullX = bbox[0] + (x / image.naturalWidth) * bboxWidth;
+        const fullY = bbox[1] + (y / image.naturalHeight) * bboxHeight;
+        const visiblePreviewWidth = Math.min(innerWidth / state.scale, image.naturalWidth);
+        const visibleFullWidth = (visiblePreviewWidth / image.naturalWidth) * bboxWidth;
+        const targetHfov = clamp((visibleFullWidth / panoramaSize[0]) * 360, 2, 120);
+        return {
+          yaw_deg: (fullX / panoramaSize[0]) * 360 - 180,
+          pitch_deg: 90 - (fullY / panoramaSize[1]) * 180,
+          target_hfov_deg: targetHfov,
+        };
+      }
+
+      function screenToImage(pointValue) {
+        return {
+          x: (pointValue.x - state.x) / state.scale,
+          y: (pointValue.y - state.y) / state.scale,
+        };
+      }
+
+      function clampOffset() {
+        const scaledWidth = image.naturalWidth * state.scale;
+        const scaledHeight = image.naturalHeight * state.scale;
+        if (scaledWidth <= innerWidth) {
+          state.x = (innerWidth - scaledWidth) / 2;
+        } else {
+          state.x = clamp(state.x, innerWidth - scaledWidth, 0);
+        }
+        if (scaledHeight <= innerHeight) {
+          state.y = (innerHeight - scaledHeight) / 2;
+        } else {
+          state.y = clamp(state.y, innerHeight - scaledHeight, 0);
+        }
+      }
+
+      function point(event) {
+        return { x: event.clientX, y: event.clientY };
+      }
+
+      function midpoint(points) {
+        return {
+          x: (points[0].x + points[1].x) / 2,
+          y: (points[0].y + points[1].y) / 2,
+        };
+      }
+
+      function distance(points) {
+        return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      }
+
+      function clamp(value, low, high) {
+        return Math.max(low, Math.min(high, value));
+      }
+
+      async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          const body = await response.text();
+          throw new Error(body || response.statusText);
+        }
+        return response.json();
+      }
+    </script>
+  </body>
+</html>
+

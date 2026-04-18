@@ -39,3 +39,21 @@ class FovTable:
 
         raise RuntimeError("unreachable FOV interpolation state")
 
+    def zoom_for_hfov(self, hfov_deg: float) -> int:
+        if not self.samples:
+            raise ValueError("FOV table is empty")
+
+        samples = sorted(self.samples, key=lambda item: item.zoom)
+        if hfov_deg >= samples[0].hfov_deg:
+            return samples[0].zoom
+        if hfov_deg <= samples[-1].hfov_deg:
+            return samples[-1].zoom
+
+        for wide, narrow in zip(samples, samples[1:]):
+            if wide.hfov_deg >= hfov_deg >= narrow.hfov_deg:
+                span = wide.hfov_deg - narrow.hfov_deg
+                ratio = (wide.hfov_deg - hfov_deg) / span
+                zoom = wide.zoom + (narrow.zoom - wide.zoom) * ratio
+                return round(zoom)
+
+        raise RuntimeError("unreachable zoom interpolation state")

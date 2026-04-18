@@ -53,6 +53,55 @@
         max-width: none;
       }
 
+      #grid-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+        pointer-events: none;
+      }
+
+      .frame-rect {
+        position: absolute;
+        border: 1px solid rgba(255, 255, 0, 0.4);
+        background: rgba(255, 255, 0, 0.05);
+        pointer-events: auto;
+        cursor: crosshair;
+      }
+
+      .frame-rect:hover {
+        border-color: rgba(255, 255, 0, 0.9);
+        background: rgba(255, 255, 0, 0.15);
+      }
+
+      .frame-rect.active {
+        border-color: #00ff00;
+        background: rgba(0, 255, 0, 0.1);
+        border-width: 2px;
+      }
+
+      .correction-marker {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: #00ff00;
+        border: 2px solid white;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        box-shadow: 0 0 5px rgba(0,0,0,0.8);
+        z-index: 10;
+      }
+
+      .frame-label {
+        position: absolute;
+        left: 2px;
+        top: 2px;
+        font-size: 9px;
+        color: yellow;
+        opacity: 0.7;
+      }
+
       .reticle {
         position: fixed;
         left: 50%;
@@ -90,11 +139,12 @@
         left: max(16px, env(safe-area-inset-left));
         right: max(16px, env(safe-area-inset-right));
         bottom: max(16px, env(safe-area-inset-bottom));
-        display: grid;
-        grid-template-columns: auto auto minmax(180px, 260px) minmax(220px, 300px) 1fr auto;
+        display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         align-items: center;
         pointer-events: none;
+        z-index: 100;
       }
 
       .toolbar button,
@@ -248,13 +298,19 @@
   <body>
     <main id="viewport" aria-label="Панорама">
       <img id="panorama" alt="" decoding="async" draggable="false" />
+      <div id="grid-container"></div>
     </main>
     <div class="reticle" aria-hidden="true"></div>
     <div class="topline">
       <div id="scanBadge" class="badge">Загрузка</div>
       <div id="coverageBadge" class="badge"></div>
+      <div id="telemetry" class="badge" style="color: #00ff00; font-family: monospace;">P: 0 T: 0 Z: 0</div>
     </div>
     <div class="toolbar">
+      <button id="toggleGrid" type="button" style="padding: 0 8px; font-size: 11px;">Сетка</button>
+      <button id="adjustButton" type="button" style="display: none; background: #7a1f1f; border-color: rgba(255, 255, 255, 0.32);">Привязать к центру</button>
+      <button id="clearAdjustments" type="button" style="display: none; background: #444; border-color: rgba(255, 255, 255, 0.2);">Очистить</button>
+      <div id="calibrationReadout" class="readout" style="display: none; border-color: #7a1f1f; color: #ff9999; font-family: monospace; font-size: 11px;"></div>
       <button id="zoomOut" class="zoom-button" type="button">-</button>
       <button id="zoomIn" class="zoom-button" type="button">+</button>
       <label class="scale-control">
@@ -275,10 +331,16 @@
     <script>
       const viewport = document.querySelector("#viewport");
       const image = document.querySelector("#panorama");
+      const gridContainer = document.querySelector("#grid-container");
       const readout = document.querySelector("#readout");
+      const telemetry = document.querySelector("#telemetry");
       const scanBadge = document.querySelector("#scanBadge");
       const coverageBadge = document.querySelector("#coverageBadge");
       const targetButton = document.querySelector("#targetButton");
+      const toggleGridButton = document.querySelector("#toggleGrid");
+      const adjustButton = document.querySelector("#adjustButton");
+      const clearAdjustmentsButton = document.querySelector("#clearAdjustments");
+      const calibrationReadout = document.querySelector("#calibrationReadout");
       const zoomInButton = document.querySelector("#zoomIn");
       const zoomOutButton = document.querySelector("#zoomOut");
       const hfovScaleInput = document.querySelector("#hfovScale");
@@ -292,6 +354,11 @@
       const state = {
         scanId: null,
         info: null,
+        scanData: null,
+        corrections: [],
+        showGrid: false,
+        activeFrame: null,
+        lastCameraPose: { pan: 0, tilt: 0, zoom: 0 },
         scale: 1,
         minScale: 1,
         maxScale: 12,
@@ -315,6 +382,9 @@
         }
 
         state.info = await fetchJson(`/scans/${state.scanId}/panorama-info`);
+        state.scanData = await fetchJson(`/scans/${state.scanId}`);
+        await loadAdjustments();
+
         const savedScale = Number(localStorage.getItem(scaleStorageKey));
         const initialScale = Number.isFinite(savedScale) ? savedScale : state.info.target_hfov_scale;
         setHfovScale(initialScale);
@@ -327,12 +397,67 @@
         resetView();
         bindEvents();
         update();
+        startTelemetryLoop();
       }
 
       function bindEvents() {
         addEventListener("resize", () => {
           resetView();
           update();
+        });
+
+        toggleGridButton.addEventListener("click", () => {
+          state.showGrid = !state.showGrid;
+          toggleGridButton.style.background = state.showGrid ? "#1f7a4d" : "";
+          
+          const display = state.showGrid ? "block" : "none";
+          adjustButton.style.display = display;
+          clearAdjustmentsButton.style.display = display;
+          calibrationReadout.style.display = display;
+          
+          renderGrid();
+        });
+
+        clearAdjustmentsButton.addEventListener("click", async () => {
+          if (!confirm("Удалить все сохраненные точки коррекции?")) return;
+          try {
+            await fetchJson("/calibration/adjustments", { method: "DELETE" });
+            state.corrections = [];
+            renderGrid();
+          } catch (e) {
+            alert("Ошибка: " + e.message);
+          }
+        });
+
+        adjustButton.addEventListener("click", async () => {
+          const target = currentTarget();
+          console.log("Binding current camera to reticle:", target.yaw_deg, target.pitch_deg);
+          
+          adjustButton.disabled = true;
+          try {
+            await fetchJson("/calibration/adjust", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                scan_id: state.scanId,
+                frame_index: 0, // 0 означает произвольную точку
+                yaw_deg: target.yaw_deg,
+                pitch_deg: target.pitch_deg,
+                pan: state.lastCameraPose.pan,
+                tilt: state.lastCameraPose.tilt,
+                zoom: state.lastCameraPose.zoom
+              }),
+            });
+            await loadAdjustments();
+            adjustButton.style.background = "#1f7a4d";
+            setTimeout(() => { adjustButton.style.background = "#7a1f1f"; }, 1000);
+            renderGrid();
+            alert(`Точка привязана к Yaw: ${target.yaw_deg.toFixed(1)}, Pitch: ${target.pitch_deg.toFixed(1)}`);
+          } catch (e) {
+            alert("Ошибка сохранения: " + e.message);
+          } finally {
+            adjustButton.disabled = false;
+          }
         });
 
         viewport.addEventListener("wheel", (event) => {
@@ -470,6 +595,7 @@
 
       function update() {
         image.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+        gridContainer.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
         const target = currentTarget();
         readout.textContent =
           `yaw ${target.yaw_deg.toFixed(1)} / pitch ${target.pitch_deg.toFixed(1)} / fov ${target.target_hfov_deg.toFixed(1)}`;
@@ -549,6 +675,130 @@
           ? clamp(numeric, Number(input.min), Number(input.max))
           : 0;
         input.value = offset.toFixed(1);
+      }
+
+      function renderGrid() {
+        gridContainer.innerHTML = "";
+        
+        // Обновляем статистику калибровки
+        if (state.corrections.length > 0) {
+          let avgDP = 0, avgDT = 0, avgDZ = 0;
+          state.corrections.forEach(c => {
+            // Упрощенно: считаем среднее отклонение
+            avgDP += (c.pan / (c.yaw_deg || 1)); // Это коэффициент pan_units
+            avgDT += (c.tilt / (c.pitch_deg || 1));
+            avgDZ += c.zoom; // Просто для справки
+          });
+          const count = state.corrections.length;
+          calibrationReadout.textContent = `Pts: ${count} | P_u: ${(avgDP/count).toFixed(1)} | T_u: ${(avgDT/count).toFixed(1)}`;
+        } else {
+          calibrationReadout.textContent = "Нет данных калибровки";
+        }
+
+        if (!state.showGrid || !state.scanData) return;
+
+        const bbox = state.info.content_bbox;
+        const panoramaSize = state.info.panorama_size;
+        const bboxWidth = bbox[2] - bbox[0] + 1;
+        const bboxHeight = bbox[3] - bbox[1] + 1;
+
+        state.scanData.frames.forEach((frame) => {
+          const yaw = frame.pose.yaw_deg;
+          const pitch = frame.pose.pitch_deg;
+          const hfov = frame.hfov_deg;
+          const vfov = frame.vfov_deg;
+
+          if (yaw === null || pitch === null || hfov === null || vfov === null) return;
+
+          const fullX = (yaw + 180) / 360 * panoramaSize[0];
+          const fullY = (90 - pitch) / 180 * panoramaSize[1];
+          const x = (fullX - bbox[0]) / bboxWidth * image.naturalWidth;
+          const y = (fullY - bbox[1]) / bboxHeight * image.naturalHeight;
+          const w = (hfov / 360 * panoramaSize[0]) / bboxWidth * image.naturalWidth;
+          const h = (vfov / 180 * panoramaSize[1]) / bboxHeight * image.naturalHeight;
+
+          const rect = document.createElement("div");
+          rect.className = "frame-rect" + (state.activeFrame === frame ? " active" : "");
+          rect.style.left = `${x - w/2}px`;
+          rect.style.top = `${y - h/2}px`;
+          rect.style.width = `${w}px`;
+          rect.style.height = `${h}px`;
+          
+          rect.innerHTML = `<span class="frame-label">${frame.index}</span>`;
+          rect.title = `F${frame.index}: P${frame.pose.pan} T${frame.pose.tilt} Z${frame.pose.zoom}`;
+          
+          rect.onclick = (e) => {
+            e.stopPropagation();
+            console.log("Frame clicked:", frame.index);
+            state.activeFrame = frame;
+            adjustButton.textContent = `Привязать к F${frame.index}`;
+            renderGrid();
+            moveCameraToPose(yaw, pitch, hfov);
+          };
+
+          gridContainer.appendChild(rect);
+        });
+
+        // Рисуем точки коррекции
+        state.corrections.forEach((c) => {
+          const fullX = (c.yaw_deg + 180) / 360 * panoramaSize[0];
+          const fullY = (90 - c.pitch_deg) / 180 * panoramaSize[1];
+          const x = (fullX - bbox[0]) / bboxWidth * image.naturalWidth;
+          const y = (fullY - bbox[1]) / bboxHeight * image.naturalHeight;
+
+          const marker = document.createElement("div");
+          marker.className = "correction-marker";
+          marker.style.left = `${x}px`;
+          marker.style.top = `${y}px`;
+          marker.title = `Привязка F${c.frame_index}: P${c.pan} T${c.tilt} Z${c.zoom}`;
+          gridContainer.appendChild(marker);
+        });
+
+        update();
+      }
+
+      async function loadAdjustments() {
+        try {
+          state.corrections = await fetchJson("/calibration/adjustments");
+        } catch (e) {
+          console.error("Failed to load adjustments", e);
+        }
+      }
+
+      async function moveCameraToPose(yaw, pitch, hfov) {
+        targetButton.disabled = true;
+        targetButton.textContent = "Наведение";
+        try {
+          const response = await fetchJson("/camera/target", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              yaw_deg: yaw, 
+              pitch_deg: pitch, 
+              target_hfov_deg: hfov, 
+              execute: true 
+            }),
+          });
+          const pose = response.actual_pose || response.command_pose;
+          readout.textContent = `P ${pose.pan} / T ${pose.tilt} / Z ${pose.zoom}`;
+        } catch (error) {
+          readout.textContent = error.message;
+        } finally {
+          targetButton.disabled = false;
+          targetButton.textContent = "Навести камеру";
+        }
+      }
+
+      function startTelemetryLoop() {
+        setInterval(async () => {
+          try {
+            const pose = await fetchJson("/camera/status");
+            state.lastCameraPose = pose;
+            telemetry.textContent = `P: ${pose.pan} T: ${pose.tilt} Z: ${pose.zoom}`;
+          } catch (e) {
+            telemetry.textContent = "Offline";
+          }
+        }, 1000);
       }
 
       async function fetchJson(url, options) {

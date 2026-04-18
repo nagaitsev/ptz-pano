@@ -10,7 +10,8 @@ from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
 from ptz_pano.camera.targeting import CameraTarget, target_to_pose
-from ptz_pano.models import to_jsonable
+from ptz_pano.jsonio import read_json, write_json
+from ptz_pano.models import CameraPose, to_jsonable
 from ptz_pano.storage.scan_repository import ScanRepository
 from ptz_pano.tools.config import build_camera, load_targeting_config
 
@@ -98,12 +99,66 @@ class TargetRequest(BaseModel):
 @app.post("/camera/target")
 def move_camera_to_target(request: TargetRequest) -> dict:
     targeting_config = load_targeting_config(CAMERA_CONFIG_PATH)
+    
+    # Применяем коррекции на основе накопленных данных
+    corrected_yaw = request.yaw_deg
+    corrected_pitch = request.pitch_deg
+    
+    corrections_path = Path("data/calibration/corrections.json")
+    if corrections_path.exists():
+        try:
+            data = read_json(corrections_path)
+            if data:
+                # Рассчитываем взвешенную поправку
+                total_weight = 0
+                yaw_offset = 0
+                pitch_offset = 0
+                zoom_offset = 0
+                
+                for c in data:
+                    dist = ((corrected_yaw - c["yaw_deg"])**2 + (corrected_pitch - c["pitch_deg"])**2)**0.5
+                    weight = 1.0 / (dist + 0.1)
+                    
+                    err_yaw = (c["pan"] / targeting_config.pan_units_per_degree) - c["yaw_deg"]
+                    err_pitch = (c["tilt"] / targeting_config.tilt_units_per_degree) - c["pitch_deg"]
+                    
+                    # Для зума сравниваем реальный zoom с тем, что ожидался в этой точке
+                    expected_zoom = 0
+                    if targeting_config.fov_table:
+                        # Мы не знаем target_hfov из записи, поэтому используем zoom как коэффициент
+                        # Но проще: берем разницу напрямую
+                        err_zoom = c["zoom"] - targeting_config.fov_table.zoom_for_hfov(request.target_hfov_deg)
+                        zoom_offset += err_zoom * weight
+                    
+                    yaw_offset += err_yaw * weight
+                    pitch_offset += err_pitch * weight
+                    total_weight += weight
+                
+                if total_weight > 0:
+                    corrected_yaw += (yaw_offset / total_weight)
+                    corrected_pitch += (pitch_offset / total_weight)
+                    # Применяем поправку зума после основного расчета
+                    # (Для упрощения считаем, что target_hfov_deg не меняется)
+        except Exception as e:
+            print(f"Error applying corrections: {e}")
+
     target = CameraTarget(
-        yaw_deg=request.yaw_deg,
-        pitch_deg=request.pitch_deg,
+        yaw_deg=corrected_yaw,
+        pitch_deg=corrected_pitch,
         target_hfov_deg=request.target_hfov_deg,
     )
     pose = target_to_pose(target, targeting_config)
+    
+    # Добавляем коррекцию зума, если она была рассчитана
+    if 'zoom_offset' in locals() and total_weight > 0:
+        final_zoom = round(pose.zoom + (zoom_offset / total_weight))
+        pose = CameraPose(
+            pan=pose.pan,
+            tilt=pose.tilt,
+            zoom=max(0, final_zoom),
+            yaw_deg=pose.yaw_deg,
+            pitch_deg=pose.pitch_deg
+        )
 
     actual_pose = None
     if request.execute:
@@ -120,6 +175,60 @@ def move_camera_to_target(request: TargetRequest) -> dict:
         "command_pose": to_jsonable(pose),
         "actual_pose": None if actual_pose is None else to_jsonable(actual_pose),
     }
+
+
+@app.get("/camera/status")
+def get_camera_status() -> dict:
+    camera = build_camera(CAMERA_CONFIG_PATH)
+    try:
+        pose = camera.get_position()
+        return to_jsonable(pose)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        camera.close()
+
+
+class CorrectionRequest(BaseModel):
+    scan_id: str
+    frame_index: int
+    yaw_deg: float
+    pitch_deg: float
+    pan: int
+    tilt: int
+    zoom: int
+
+
+@app.post("/calibration/adjust")
+def adjust_calibration(request: CorrectionRequest) -> dict:
+    corrections_path = Path("data/calibration/corrections.json")
+    corrections = []
+    if corrections_path.exists():
+        try:
+            corrections = read_json(corrections_path)
+        except Exception:
+            corrections = []
+    
+    corrections.append(request.model_dump())
+    write_json(corrections_path, corrections)
+    
+    return {"status": "success", "total_corrections": len(corrections)}
+
+
+@app.get("/calibration/adjustments")
+def get_adjustments() -> list:
+    corrections_path = Path("data/calibration/corrections.json")
+    if not corrections_path.exists():
+        return []
+    return read_json(corrections_path)
+
+
+@app.delete("/calibration/adjustments")
+def clear_adjustments() -> dict:
+    corrections_path = Path("data/calibration/corrections.json")
+    if corrections_path.exists():
+        corrections_path.unlink()
+    return {"status": "cleared"}
 
 
 def _latest_scan_id() -> str | None:

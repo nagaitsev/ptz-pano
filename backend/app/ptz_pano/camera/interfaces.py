@@ -16,6 +16,9 @@ class CameraController(Protocol):
     def move_absolute(self, pose: CameraPose) -> None:
         ...
 
+    def move_direction(self, pan_speed: int, tilt_speed: int, pan_dir: int, tilt_dir: int) -> None:
+        ...
+
     def get_position(self) -> CameraPose:
         ...
 

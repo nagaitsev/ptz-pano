@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import socket
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Iterable
 from ptz_pano.models import CameraConfig, CameraPose
 
 VISCA_TERMINATOR = 0xFF
+logger = logging.getLogger("ptz_pano.camera.visca_tcp")
 
 
 def _encode_nibbles(value: int, width: int = 4) -> bytes:
@@ -50,17 +52,24 @@ class PtzOpticsViscaTcpController:
     def connect(self) -> None:
         if self._socket is not None:
             return
-        sock = socket.create_connection(
-            (self.config.host, self.config.port),
-            timeout=self.config.timeout_sec,
-        )
+        address = f"{self.config.host}:{self.config.port}"
+        try:
+            sock = socket.create_connection(
+                (self.config.host, self.config.port),
+                timeout=self.config.timeout_sec,
+            )
+        except OSError:
+            logger.exception("Failed to connect to camera %s", address)
+            raise
         sock.settimeout(self.config.timeout_sec)
         self._socket = sock
+        logger.info("Connected to camera %s", address)
 
     def close(self) -> None:
         if self._socket is not None:
             self._socket.close()
             self._socket = None
+            logger.debug("Closed camera connection %s:%s", self.config.host, self.config.port)
 
     def send_raw(self, command: bytes) -> list[bytes]:
         self.connect()
@@ -81,18 +90,63 @@ class PtzOpticsViscaTcpController:
             + _encode_nibbles(pose.tilt)
             + bytes([0xFF])
         )
-        self.send_raw(command)
-        self.set_zoom(pose.zoom)
+        try:
+            self.send_raw(command)
+            self.set_zoom(pose.zoom)
+        except Exception:
+            logger.exception(
+                "Failed to move camera %s:%s to pan=%s tilt=%s zoom=%s",
+                self.config.host,
+                self.config.port,
+                pose.pan,
+                pose.tilt,
+                pose.zoom,
+            )
+            raise
+
+    def move_direction(self, pan_speed: int, tilt_speed: int, pan_dir: int, tilt_dir: int) -> None:
+        pan_code = { -1: 0x01, 0: 0x03, 1: 0x02 }.get(int(pan_dir))
+        tilt_code = { -1: 0x01, 0: 0x03, 1: 0x02 }.get(int(tilt_dir))
+        if pan_code is None or tilt_code is None:
+            raise ValueError("pan_dir and tilt_dir must be -1, 0, or 1")
+        command = bytes([
+            0x81,
+            0x01,
+            0x06,
+            0x01,
+            max(1, min(0x18, int(pan_speed))),
+            max(1, min(0x14, int(tilt_speed))),
+            pan_code,
+            tilt_code,
+            0xFF,
+        ])
+        try:
+            self.send_raw(command)
+        except Exception:
+            logger.exception(
+                "Failed to drive camera %s:%s with pan_speed=%s tilt_speed=%s pan_dir=%s tilt_dir=%s",
+                self.config.host,
+                self.config.port,
+                pan_speed,
+                tilt_speed,
+                pan_dir,
+                tilt_dir,
+            )
+            raise
 
     def get_position(self) -> CameraPose:
-        responses = self._send_inquiry(bytes.fromhex("81 09 06 12 FF"))
-        response = _find_information_response(responses)
-        payload = response[2:-1]
-        if len(payload) < 8:
-            raise RuntimeError(f"unexpected pan/tilt inquiry response: {response.hex(' ').upper()}")
-        pan = _decode_nibbles(payload[:4], signed=True)
-        tilt = _decode_nibbles(payload[4:8], signed=True)
-        return CameraPose(pan=pan, tilt=tilt, zoom=self.get_zoom())
+        try:
+            responses = self._send_inquiry(bytes.fromhex("81 09 06 12 FF"))
+            response = _find_information_response(responses)
+            payload = response[2:-1]
+            if len(payload) < 8:
+                raise RuntimeError(f"unexpected pan/tilt inquiry response: {response.hex(' ').upper()}")
+            pan = _decode_nibbles(payload[:4], signed=True)
+            tilt = _decode_nibbles(payload[4:8], signed=True)
+            return CameraPose(pan=pan, tilt=tilt, zoom=self.get_zoom())
+        except Exception:
+            logger.exception("Failed to read camera position from %s:%s", self.config.host, self.config.port)
+            raise
 
     def get_zoom(self) -> int:
         responses = self._send_inquiry(bytes.fromhex("81 09 04 47 FF"))
@@ -116,11 +170,20 @@ class PtzOpticsViscaTcpController:
     def _send_inquiry(self, command: bytes) -> list[bytes]:
         self.connect()
         assert self._socket is not None
-        self._socket.sendall(_ensure_command(command))
-        return self._read_responses(
-            expected_responses=8,
-            stop_when=_has_information_or_error_response,
-        )
+        try:
+            self._socket.sendall(_ensure_command(command))
+            return self._read_responses(
+                expected_responses=8,
+                stop_when=_has_information_or_error_response,
+            )
+        except Exception:
+            logger.exception(
+                "VISCA inquiry failed for camera %s:%s: %s",
+                self.config.host,
+                self.config.port,
+                command.hex(" ").upper(),
+            )
+            raise
 
     def _read_responses(
         self,

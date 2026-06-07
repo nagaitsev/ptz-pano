@@ -20,6 +20,7 @@ class CaptureConfig:
     kind: Literal["rtsp", "snapshot"]
     source: str
     resolution: tuple[int, int] | None = None
+    whep_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -92,4 +93,3 @@ def capture_config_from_dict(data: dict[str, Any]) -> CaptureConfig:
 
 def pose_from_dict(data: dict[str, Any]) -> CameraPose:
     return CameraPose(**data)
-

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +10,8 @@ from ptz_pano.calibration import FovTable
 from ptz_pano.models import CameraPose, FrameMetadata, ScanDocument
 from ptz_pano.scan.scan_planner import ScanPlanner
 from ptz_pano.storage.scan_repository import ScanRepository
+
+logger = logging.getLogger("ptz_pano.scan.runner")
 
 
 @dataclass
@@ -31,7 +34,7 @@ class ScanRunner:
             try:
                 actual_pose = self._pose_with_angles(self.camera.get_position())
             except RuntimeError as exc:
-                print(f"warning: using planned pose for frame {index}: {exc}")
+                logger.warning("Using planned pose for frame %s because camera status failed: %s", index, exc)
                 actual_pose = self._pose_with_angles(pose)
             hfov_deg, vfov_deg = self._fov_for_zoom(actual_pose.zoom)
             frame_name = f"frame_{index:04d}.jpg"

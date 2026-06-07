@@ -93,6 +93,16 @@
         z-index: 10;
       }
 
+      .mapping-point {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: rgba(0, 255, 180, 0.72);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+
       .frame-label {
         position: absolute;
         left: 2px;
@@ -338,6 +348,227 @@
         color: rgba(255, 255, 255, 0.78);
       }
 
+      .video-preview {
+        position: fixed;
+        left: calc(100vw - 304px);
+        top: 72px;
+        z-index: 40;
+        width: 280px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: rgba(8, 8, 8, 0.88);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.34);
+        user-select: none;
+        touch-action: none;
+      }
+
+      .video-preview__bar {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 8px 0 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.82);
+        cursor: move;
+        font-size: 12px;
+      }
+
+      .video-preview__bar button {
+        height: 22px;
+        padding: 0 8px;
+        font-size: 11px;
+      }
+
+      #videoStream {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #111;
+      }
+
+      #videoElement {
+        display: none;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #111;
+        object-fit: cover;
+      }
+
+      #videoStatus {
+        padding: 6px 8px 7px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.58);
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      .joystick-window {
+        position: fixed;
+        left: calc(100vw - 272px);
+        top: 392px;
+        z-index: 40;
+        width: 248px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        background: rgba(8, 8, 8, 0.88);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.34);
+        user-select: none;
+        touch-action: none;
+      }
+
+      .joystick-window__bar {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.82);
+        cursor: move;
+        font-size: 12px;
+      }
+
+      .joystick-window__body {
+        padding: 14px 14px 12px;
+      }
+
+      .joystick-pad {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        background: rgba(18, 18, 18, 0.92);
+        touch-action: none;
+      }
+
+      .joystick-ring {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 78%;
+        height: 78%;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background:
+          radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0 18%, transparent 18% 100%),
+          radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 0 68%, rgba(255, 255, 255, 0.08) 68% 69%, transparent 69% 100%),
+          rgba(18, 18, 18, 0.92);
+        transform: translate(-50%, -50%);
+      }
+
+      .joystick-ring::before,
+      .joystick-ring::after {
+        content: "";
+        position: absolute;
+        background: rgba(255, 255, 255, 0.08);
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .joystick-ring::before {
+        width: 1px;
+        height: 78%;
+      }
+
+      .joystick-ring::after {
+        width: 78%;
+        height: 1px;
+      }
+
+      .joystick-zoom-zone {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 34%;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.74);
+        overflow: hidden;
+        user-select: none;
+      }
+
+      .joystick-zoom-zone--in {
+        top: 0;
+      }
+
+      .joystick-zoom-zone--out {
+        bottom: 0;
+      }
+
+      .joystick-zoom-zone.active {
+        background: rgba(46, 132, 255, 0.16);
+        border-color: rgba(93, 167, 255, 0.48);
+        color: #d9ebff;
+      }
+
+      .joystick-zoom-zone::after {
+        content: "";
+        position: absolute;
+        left: 11%;
+        width: 78%;
+        height: 106%;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 50%;
+        pointer-events: none;
+      }
+
+      .joystick-zoom-zone--in::after {
+        bottom: -66%;
+      }
+
+      .joystick-zoom-zone--out::after {
+        top: -66%;
+      }
+
+      .cameraZoomLabel {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+        pointer-events: none;
+      }
+
+      .cameraZoomLabel--left {
+        left: 14%;
+      }
+
+      .cameraZoomLabel--right {
+        right: 14%;
+      }
+
+      .joystick-knob {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background:
+          radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 42%, rgba(0, 0, 0, 0.22) 100%),
+          rgba(28, 28, 28, 0.96);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+        transform: translate(-50%, -50%);
+      }
+
+      .joystick-status {
+        min-height: 18px;
+        margin-top: 10px;
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 11px;
+        line-height: 1.3;
+        text-align: center;
+      }
+
       @media (max-width: 720px) {
         .toolbar {
           grid-template-columns: 48px 48px 1fr;
@@ -358,6 +589,14 @@
         .readout {
           font-size: 12px;
         }
+
+        .video-preview {
+          width: 220px;
+        }
+
+        .joystick-window {
+          width: 220px;
+        }
       }
     </style>
   </head>
@@ -373,10 +612,10 @@
       <div id="telemetry" class="badge" style="color: #00ff00; font-family: monospace;">P: 0 T: 0 Z: 0</div>
     </div>
     <div class="toolbar">
-      <button id="toggleGrid" type="button" style="padding: 0 8px; font-size: 11px;">Сетка</button>
       <button id="settingsButton" type="button" style="padding: 0 10px; font-size: 12px;">Настройки</button>
       <button id="adjustButton" type="button" style="display: none; background: #7a1f1f; border-color: rgba(255, 255, 255, 0.32);">Привязать к центру</button>
       <button id="clearAdjustments" type="button" style="display: none; background: #444; border-color: rgba(255, 255, 255, 0.2);">Очистить</button>
+      <button id="saveLocalCorrection" type="button" style="display: none; background: #1f5f7a; border-color: rgba(255, 255, 255, 0.32);">Сохранить фактическую точку</button>
       <div id="calibrationReadout" class="readout" style="display: none; border-color: #7a1f1f; color: #ff9999; font-family: monospace; font-size: 11px;"></div>
       <button id="zoomOut" class="zoom-button" type="button">-</button>
       <button id="zoomIn" class="zoom-button" type="button">+</button>
@@ -394,8 +633,46 @@
       <div id="readout" class="readout">yaw 0.0 / pitch 0.0</div>
       <button id="targetButton" type="button">Навести камеру</button>
     </div>
+    <aside id="videoPreview" class="video-preview" aria-label="Видео с камеры">
+      <div id="videoPreviewHandle" class="video-preview__bar">
+        <span>RTSP preview</span>
+        <button id="videoRefresh" type="button">↻</button>
+      </div>
+      <video id="videoElement" autoplay muted playsinline></video>
+      <canvas id="videoStream" aria-label="Кадр с камеры"></canvas>
+      <div id="videoStatus">Подключение</div>
+    </aside>
+    <aside id="cameraJoystick" class="joystick-window" aria-label="Джойстик камеры">
+      <div id="cameraJoystickHandle" class="joystick-window__bar">
+        <span>Камера</span>
+        <span>джойстик</span>
+      </div>
+      <div class="joystick-window__body">
+        <div id="cameraJoystickPad" class="joystick-pad">
+          <div id="cameraZoomInZone" class="joystick-zoom-zone joystick-zoom-zone--in">
+            <span class="cameraZoomLabel cameraZoomLabel--left">+</span>
+            <span class="cameraZoomLabel cameraZoomLabel--right">+</span>
+          </div>
+          <div id="cameraZoomOutZone" class="joystick-zoom-zone joystick-zoom-zone--out">
+            <span class="cameraZoomLabel cameraZoomLabel--left">-</span>
+            <span class="cameraZoomLabel cameraZoomLabel--right">-</span>
+          </div>
+          <div class="joystick-ring"></div>
+          <div id="cameraJoystickKnob" class="joystick-knob"></div>
+        </div>
+        <div id="cameraJoystickStatus" class="joystick-status">Удерживайте центральный круг и ведите в сторону</div>
+      </div>
+    </aside>
     <section id="settingsPanel" class="settings-panel" aria-label="Настройки">
       <h2>Настройки</h2>
+      <label>
+        IP камеры
+        <input id="settingsCameraHost" type="text" inputmode="decimal" placeholder="192.168.1.50" />
+      </label>
+      <label>
+        WebRTC / WHEP URL
+        <input id="settingsWhepUrl" type="text" placeholder="http://127.0.0.1:8889/camera/whep" />
+      </label>
       <label>
         ID новой съемки
         <input id="settingsScanId" type="text" placeholder="scan_20260418_120000" />
@@ -418,20 +695,23 @@
       <p class="settings-note">
         Если угол задан, текущая позиция камеры будет центром зоны съемки.
       </p>
+      <input id="settingsProjection" type="hidden" value="sphere" />
+      <input id="settingsStrategy" type="hidden" value="max_weight" />
       <label>
-        Проекция
-        <select id="settingsProjection">
-          <option value="sphere" selected>sphere</option>
-          <option value="angular">angular</option>
+        <span>Движок склейки</span>
+        <select id="settingsStitchEngine">
+          <option value="opencv" selected>OpenCV + telemetry fallback</option>
+          <option value="openstitching">OpenStitching experimental</option>
         </select>
       </label>
       <label>
-        Склейка
-        <select id="settingsStrategy">
-          <option value="max_weight" selected>max_weight</option>
-          <option value="average">average</option>
+        <span>Режим склейки</span>
+        <select id="settingsStitchQuality">
+          <option value="fast" selected>Fast</option>
+          <option value="quality">Quality</option>
         </select>
       </label>
+      <div class="settings-status">Алгоритм склейки: OpenCV Stitcher + telemetry fallback</div>
       <label>
         <span>
           <input id="settingsUseLens" type="checkbox" checked />
@@ -439,6 +719,7 @@
         </span>
       </label>
       <div class="settings-actions">
+        <button id="saveCameraHostButton" type="button">Сохранить IP</button>
         <button id="stitchButton" type="button">Склеить текущую</button>
         <button id="scanAndStitchButton" type="button">Снять и склеить</button>
         <button id="settingsClose" type="button">Закрыть</button>
@@ -458,19 +739,38 @@
       const settingsButton = document.querySelector("#settingsButton");
       const settingsPanel = document.querySelector("#settingsPanel");
       const settingsClose = document.querySelector("#settingsClose");
+      const settingsCameraHost = document.querySelector("#settingsCameraHost");
+      const settingsWhepUrl = document.querySelector("#settingsWhepUrl");
+      const saveCameraHostButton = document.querySelector("#saveCameraHostButton");
       const settingsScanId = document.querySelector("#settingsScanId");
       const settingsHorizontalAngle = document.querySelector("#settingsHorizontalAngle");
       const settingsVerticalAngle = document.querySelector("#settingsVerticalAngle");
       const settingsScanOrder = document.querySelector("#settingsScanOrder");
       const settingsProjection = document.querySelector("#settingsProjection");
       const settingsStrategy = document.querySelector("#settingsStrategy");
+      const settingsStitchEngine = document.querySelector("#settingsStitchEngine");
+      const settingsStitchQuality = document.querySelector("#settingsStitchQuality");
       const settingsUseLens = document.querySelector("#settingsUseLens");
       const settingsStatus = document.querySelector("#settingsStatus");
+      const videoPreview = document.querySelector("#videoPreview");
+      const videoPreviewHandle = document.querySelector("#videoPreviewHandle");
+      const videoElement = document.querySelector("#videoElement");
+      const videoStream = document.querySelector("#videoStream");
+      const videoContext = videoStream.getContext("2d");
+      const videoRefresh = document.querySelector("#videoRefresh");
+      const videoStatus = document.querySelector("#videoStatus");
+      const cameraJoystick = document.querySelector("#cameraJoystick");
+      const cameraJoystickHandle = document.querySelector("#cameraJoystickHandle");
+      const cameraJoystickPad = document.querySelector("#cameraJoystickPad");
+      const cameraJoystickKnob = document.querySelector("#cameraJoystickKnob");
+      const cameraJoystickStatus = document.querySelector("#cameraJoystickStatus");
+      const cameraZoomInZone = document.querySelector("#cameraZoomInZone");
+      const cameraZoomOutZone = document.querySelector("#cameraZoomOutZone");
       const stitchButton = document.querySelector("#stitchButton");
       const scanAndStitchButton = document.querySelector("#scanAndStitchButton");
-      const toggleGridButton = document.querySelector("#toggleGrid");
       const adjustButton = document.querySelector("#adjustButton");
       const clearAdjustmentsButton = document.querySelector("#clearAdjustments");
+      const saveLocalCorrectionButton = document.querySelector("#saveLocalCorrection");
       const calibrationReadout = document.querySelector("#calibrationReadout");
       const zoomInButton = document.querySelector("#zoomIn");
       const zoomOutButton = document.querySelector("#zoomOut");
@@ -481,12 +781,26 @@
       const pitchOffsetInput = document.querySelector("#pitchOffset");
       const yawOffsetStorageKey = "ptz-pano-yaw-offset";
       const pitchOffsetStorageKey = "ptz-pano-pitch-offset";
+      const videoPreviewPositionKey = "ptz-pano-video-preview-position";
+      const joystickWindowPositionKey = "ptz-pano-joystick-position";
+      const joystickHintText = "Удерживайте центральный круг и ведите в сторону";
+      const joystickErrorText = "Ошибка связи с камерой";
 
       const state = {
         scanId: null,
         info: null,
         scanData: null,
         corrections: [],
+        pendingCorrectionTarget: null,
+        cameraHost: "",
+        eventsBound: false,
+        telemetryStarted: false,
+        telemetryRequestInFlight: false,
+        videoPollTimer: null,
+        videoRequestInFlight: false,
+        videoMode: "image",
+        webrtcPeerConnection: null,
+        webrtcSessionUrl: null,
         showGrid: false,
         activeFrame: null,
         lastCameraPose: { pan: 0, tilt: 0, zoom: 0 },
@@ -496,7 +810,23 @@
         x: 0,
         y: 0,
         pointers: new Map(),
+        pointerStarts: new Map(),
         gesture: null,
+        lastTap: null,
+        joystick: {
+          pointerId: null,
+          active: false,
+          vectorX: 0,
+          vectorY: 0,
+          lastCommandKey: null,
+          pendingCommand: null,
+          sending: false,
+        },
+        zoomHold: {
+          pointerId: null,
+          direction: 0,
+          timer: null,
+        },
       };
 
       init().catch((error) => {
@@ -505,16 +835,36 @@
       });
 
       async function init() {
+        bindEvents();
+        setHfovScale(Number(localStorage.getItem(scaleStorageKey) ?? "0.45"));
+        setOffset(yawOffsetInput, localStorage.getItem(yawOffsetStorageKey) ?? "0");
+        setOffset(pitchOffsetInput, localStorage.getItem(pitchOffsetStorageKey) ?? "0");
+        await loadCameraSettings();
+        await loadAdjustments();
+        restoreVideoPreviewPosition();
+        restoreJoystickWindowPosition();
+        renderJoystickKnob();
+        startVideoPreview();
+        startTelemetryLoop();
+
         const params = new URLSearchParams(location.search);
         state.scanId = params.get("scan");
         if (!state.scanId) {
-          const latest = await fetchJson("/api/latest-scan");
-          state.scanId = latest.id;
+          try {
+            const latest = await fetchJson("/api/latest-scan");
+            state.scanId = latest.id;
+          } catch (error) {
+            scanBadge.textContent = "Нет панорамы";
+            coverageBadge.textContent = "0.0%";
+            targetButton.disabled = true;
+            readout.textContent = "Откройте настройки, проверьте IP камеры и запустите съемку";
+            settingsStatus.textContent = "Готово: сохраненных панорам нет";
+            return;
+          }
         }
 
         state.info = await fetchJson(`/scans/${state.scanId}/panorama-info`);
         state.scanData = await fetchJson(`/scans/${state.scanId}`);
-        await loadAdjustments();
 
         const savedScaleRaw = localStorage.getItem(scaleStorageKey);
         const savedScale = savedScaleRaw === null ? NaN : Number(savedScaleRaw);
@@ -525,28 +875,22 @@
         scanBadge.textContent = state.scanId;
         coverageBadge.textContent = `${state.info.coverage_percent.toFixed(1)}%`;
         await loadPanoramaImage(`${state.info.preview_url}?t=${Date.now()}`);
+        targetButton.disabled = false;
         resetView();
-        bindEvents();
         update();
-        startTelemetryLoop();
       }
 
       function bindEvents() {
+        if (state.eventsBound) return;
+        state.eventsBound = true;
         addEventListener("resize", () => {
           resetView();
+          const rect = videoPreview.getBoundingClientRect();
+          setVideoPreviewPosition(rect.left, rect.top);
+          const joystickRect = cameraJoystick.getBoundingClientRect();
+          setJoystickWindowPosition(joystickRect.left, joystickRect.top);
+          renderJoystickKnob();
           update();
-        });
-
-        toggleGridButton.addEventListener("click", () => {
-          state.showGrid = !state.showGrid;
-          toggleGridButton.style.background = state.showGrid ? "#1f7a4d" : "";
-          
-          const display = state.showGrid ? "block" : "none";
-          adjustButton.style.display = display;
-          clearAdjustmentsButton.style.display = display;
-          calibrationReadout.style.display = display;
-          
-          renderGrid();
         });
 
         settingsButton.addEventListener("click", () => {
@@ -556,8 +900,24 @@
           }
         });
         settingsClose.addEventListener("click", () => settingsPanel.classList.remove("open"));
+        videoRefresh.addEventListener("click", () => startVideoPreview());
+        bindVideoPreviewDrag();
+        bindJoystickWindowDrag();
+        bindJoystickPad();
+        bindJoystickZoomZones();
+        saveCameraHostButton.addEventListener("click", async () => {
+          saveCameraHostButton.disabled = true;
+          try {
+            await saveCameraSettings();
+          } catch (error) {
+            settingsStatus.textContent = error.message;
+          } finally {
+            saveCameraHostButton.disabled = false;
+          }
+        });
         stitchButton.addEventListener("click", () => startStitchJob());
         scanAndStitchButton.addEventListener("click", () => startScanAndStitchJob());
+        saveLocalCorrectionButton.addEventListener("click", () => saveLocalCorrection());
 
         clearAdjustmentsButton.addEventListener("click", async () => {
           if (!confirm("Удалить все сохраненные точки коррекции?")) return;
@@ -610,6 +970,11 @@
         viewport.addEventListener("pointerdown", (event) => {
           viewport.setPointerCapture(event.pointerId);
           state.pointers.set(event.pointerId, point(event));
+          state.pointerStarts.set(event.pointerId, {
+            point: point(event),
+            time: event.timeStamp,
+            pointerType: event.pointerType,
+          });
           viewport.classList.add("dragging");
           startGesture();
         });
@@ -622,13 +987,24 @@
 
         for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
           viewport.addEventListener(name, (event) => {
+            const start = state.pointerStarts.get(event.pointerId);
+            const hadSinglePointer = state.pointers.size === 1;
             state.pointers.delete(event.pointerId);
+            state.pointerStarts.delete(event.pointerId);
             if (state.pointers.size === 0) {
               viewport.classList.remove("dragging");
+            }
+            if (name === "pointerup" && start && hadSinglePointer) {
+              handleTapNavigation(event, start);
             }
             startGesture();
           });
         }
+
+        viewport.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          moveCameraAtScreenPoint(event.clientX, event.clientY);
+        });
 
         zoomInButton.addEventListener("click", () => zoomAt(innerWidth / 2, innerHeight / 2, 1.35));
         zoomOutButton.addEventListener("click", () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.35));
@@ -651,12 +1027,15 @@
       }
 
       function resetView() {
-        const fitScale = Math.max(innerWidth / image.naturalWidth, innerHeight / image.naturalHeight);
+        if (!image.naturalWidth || !image.naturalHeight) return;
+        const fitScale = state.showGrid
+          ? innerHeight / image.naturalHeight
+          : Math.max(innerWidth / image.naturalWidth, innerHeight / image.naturalHeight);
         state.minScale = fitScale;
         state.maxScale = fitScale * 16;
         state.scale = fitScale;
         state.x = (innerWidth - image.naturalWidth * state.scale) / 2;
-        state.y = (innerHeight - image.naturalHeight * state.scale) / 2;
+        state.y = state.showGrid ? 0 : (innerHeight - image.naturalHeight * state.scale) / 2;
         clampOffset();
       }
 
@@ -715,22 +1094,613 @@
       }
 
       async function moveCamera() {
-        const target = currentTarget();
+        return moveCameraAtScreenPoint(innerWidth / 2, innerHeight / 2);
+      }
+
+      async function moveCameraAtScreenPoint(screenX, screenY) {
+        const target = targetFromScreenPoint(screenX, screenY);
         targetButton.disabled = true;
         targetButton.textContent = "Наведение";
         try {
           const response = await fetchJson("/camera/target", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...target, execute: true }),
+            body: JSON.stringify({ scan_id: state.scanId, ...target, execute: true }),
           });
           const pose = response.command_pose;
-          readout.textContent = `pan ${pose.pan} / tilt ${pose.tilt} / zoom ${pose.zoom}`;
+          readout.textContent =
+            `pan ${pose.pan} / tilt ${pose.tilt} / zoom ${pose.zoom} / теперь поставьте под крест место, куда камера приехала фактически, и нажмите "Сохранить фактическую точку"`;
+          state.pendingCorrectionTarget = { ...target };
+          saveLocalCorrectionButton.style.display = "inline-flex";
         } catch (error) {
           readout.textContent = error.message;
         } finally {
           targetButton.disabled = false;
           targetButton.textContent = "Навести камеру";
+        }
+      }
+
+      function handleTapNavigation(event, start) {
+        if (start.pointerType !== "touch") return;
+        const endPoint = point(event);
+        if (distance([start.point, endPoint]) > 12) return;
+        const tap = { point: endPoint, time: event.timeStamp };
+        if (
+          state.lastTap &&
+          tap.time - state.lastTap.time <= 350 &&
+          distance([tap.point, state.lastTap.point]) <= 40
+        ) {
+          state.lastTap = null;
+          moveCameraAtScreenPoint(tap.point.x, tap.point.y);
+          return;
+        }
+        state.lastTap = tap;
+      }
+
+      async function saveLocalCorrection() {
+        if (!state.pendingCorrectionTarget) {
+          readout.textContent = "Сначала наведите камеру";
+          return;
+        }
+        const observed = currentTarget();
+        saveLocalCorrectionButton.disabled = true;
+        try {
+          const response = await fetchJson("/calibration/local-adjust", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              scan_id: state.scanId,
+              desired_yaw_deg: state.pendingCorrectionTarget.yaw_deg,
+              desired_pitch_deg: state.pendingCorrectionTarget.pitch_deg,
+              observed_yaw_deg: observed.yaw_deg,
+              observed_pitch_deg: observed.pitch_deg,
+              target_hfov_deg: state.pendingCorrectionTarget.target_hfov_deg,
+            }),
+          });
+          state.pendingCorrectionTarget = null;
+          saveLocalCorrectionButton.style.display = "none";
+          const correction = response.correction;
+          readout.textContent =
+            `фактическая точка сохранена: yaw ${correction.delta_yaw_deg.toFixed(2)} / pitch ${correction.delta_pitch_deg.toFixed(2)}`;
+        } catch (error) {
+          readout.textContent = error.message;
+        } finally {
+          saveLocalCorrectionButton.disabled = false;
+        }
+      }
+
+      async function loadCameraSettings() {
+        try {
+          const settings = await fetchJson("/api/camera-settings");
+          state.cameraHost = settings.host || "";
+          settingsCameraHost.value = state.cameraHost;
+          settingsWhepUrl.value = settings.whep_url || "";
+          settingsWhepUrl.dataset.currentValue = settingsWhepUrl.value;
+        } catch (error) {
+          settingsStatus.textContent = `IP камеры: ${error.message}`;
+        }
+      }
+
+      async function saveCameraSettings(options = {}) {
+        const host = settingsCameraHost.value.trim();
+        const whepUrl = settingsWhepUrl.value.trim();
+        if (!host) {
+          throw new Error("IP камеры: поле не должно быть пустым");
+        }
+        const currentWhepUrl = (settingsWhepUrl.dataset.currentValue || "").trim();
+        if (host === state.cameraHost && whepUrl === currentWhepUrl) {
+          return false;
+        }
+        const settings = await fetchJson("/api/camera-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ host, whep_url: whepUrl }),
+        });
+        state.cameraHost = settings.host || host;
+        settingsCameraHost.value = state.cameraHost;
+        settingsWhepUrl.value = settings.whep_url || whepUrl;
+        settingsWhepUrl.dataset.currentValue = settingsWhepUrl.value;
+        if (!options.quiet) {
+          settingsStatus.textContent = `IP камеры сохранен: ${state.cameraHost}`;
+        }
+        startVideoPreview();
+        return true;
+      }
+
+      function startVideoPreview() {
+        const whepUrl = settingsWhepUrl.value.trim();
+        if (whepUrl) {
+          startWebRtcPreview(whepUrl);
+          return;
+        }
+        fallbackToImagePreview("JPEG preview");
+      }
+
+      async function startWebRtcPreview(whepUrl) {
+        stopImagePreviewPolling();
+        stopWebRtcPreview();
+        if (!("RTCPeerConnection" in window)) {
+          fallbackToImagePreview("JPEG fallback");
+          return;
+        }
+        videoStatus.textContent = "WebRTC";
+        try {
+          const peerConnection = new RTCPeerConnection({ iceServers: [] });
+          state.webrtcPeerConnection = peerConnection;
+          state.videoMode = "webrtc";
+          const mediaStream = new MediaStream();
+          videoElement.srcObject = mediaStream;
+          videoElement.onloadeddata = () => {
+            if (state.videoMode === "webrtc") {
+              videoStatus.textContent = "WebRTC";
+            }
+          };
+          peerConnection.addTransceiver("video", { direction: "recvonly" });
+          peerConnection.ontrack = (event) => {
+            const source = event.streams[0];
+            if (source) {
+              for (const track of source.getVideoTracks()) {
+                if (!mediaStream.getTracks().includes(track)) {
+                  mediaStream.addTrack(track);
+                }
+              }
+            } else if (event.track.kind === "video") {
+              mediaStream.addTrack(event.track);
+            }
+            videoElement.style.display = "block";
+            videoStream.style.display = "none";
+            videoStatus.textContent = "WebRTC";
+            videoElement.play().catch(() => {});
+          };
+          peerConnection.onconnectionstatechange = () => {
+            if (peerConnection !== state.webrtcPeerConnection) return;
+            if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
+              fallbackToImagePreview("JPEG fallback");
+            }
+          };
+          const offer = await peerConnection.createOffer();
+          await peerConnection.setLocalDescription(offer);
+          await waitForIceGatheringComplete(peerConnection, 1500);
+          const response = await fetch(whepUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/sdp",
+              Accept: "application/sdp",
+            },
+            body: peerConnection.localDescription?.sdp || "",
+          });
+          if (!response.ok) {
+            throw new Error(`WHEP ${response.status}`);
+          }
+          const sessionLocation = response.headers.get("Location");
+          state.webrtcSessionUrl = sessionLocation ? new URL(sessionLocation, whepUrl).toString() : null;
+          const answerSdp = await response.text();
+          await peerConnection.setRemoteDescription({ type: "answer", sdp: answerSdp });
+          videoElement.style.display = "block";
+          videoStream.style.display = "none";
+          videoStatus.textContent = videoElement.readyState >= 2 ? "WebRTC" : "WebRTC connecting";
+          setTimeout(() => {
+            if (
+              state.videoMode === "webrtc" &&
+              state.webrtcPeerConnection === peerConnection &&
+              videoElement.readyState < 2
+            ) {
+              fallbackToImagePreview("JPEG fallback");
+            }
+          }, 3500);
+        } catch (_error) {
+          fallbackToImagePreview("JPEG fallback");
+        }
+      }
+
+      function fallbackToImagePreview(statusText) {
+        stopWebRtcPreview();
+        videoElement.style.display = "none";
+        videoStream.style.display = "block";
+        state.videoMode = "image";
+        videoStatus.textContent = statusText;
+        refreshVideoPreview();
+        if (state.videoPollTimer) return;
+        state.videoPollTimer = setInterval(refreshVideoPreview, 500);
+      }
+
+      function stopImagePreviewPolling() {
+        if (!state.videoPollTimer) return;
+        clearInterval(state.videoPollTimer);
+        state.videoPollTimer = null;
+      }
+
+      function stopWebRtcPreview() {
+        const peerConnection = state.webrtcPeerConnection;
+        state.webrtcPeerConnection = null;
+        if (peerConnection) {
+          peerConnection.ontrack = null;
+          peerConnection.onconnectionstatechange = null;
+          peerConnection.close();
+        }
+        if (state.webrtcSessionUrl) {
+          fetch(state.webrtcSessionUrl, { method: "DELETE" }).catch(() => {});
+          state.webrtcSessionUrl = null;
+        }
+        if (videoElement.srcObject) {
+          for (const track of videoElement.srcObject.getTracks()) {
+            track.stop();
+          }
+          videoElement.srcObject = null;
+        }
+        videoElement.onloadeddata = null;
+      }
+
+      function waitForIceGatheringComplete(peerConnection, timeoutMs) {
+        if (peerConnection.iceGatheringState === "complete") {
+          return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            peerConnection.removeEventListener("icegatheringstatechange", onStateChange);
+            clearTimeout(timer);
+            resolve();
+          };
+          const onStateChange = () => {
+            if (peerConnection.iceGatheringState === "complete") {
+              finish();
+            }
+          };
+          const timer = setTimeout(finish, timeoutMs);
+          peerConnection.addEventListener("icegatheringstatechange", onStateChange);
+        });
+      }
+
+      async function refreshVideoPreview() {
+        if (state.videoMode !== "image") return;
+        if (state.videoRequestInFlight) return;
+        state.videoRequestInFlight = true;
+        const nextUrl = `/camera/preview.jpg?t=${Date.now()}`;
+        try {
+          const frame = await loadVideoFrame(nextUrl);
+          paintVideoFrame(frame);
+          videoStatus.textContent = "Live";
+        } catch (_error) {
+          videoStatus.textContent = "Нет кадра";
+        } finally {
+          state.videoRequestInFlight = false;
+        }
+      }
+
+      function loadVideoFrame(src) {
+        return new Promise((resolve, reject) => {
+          const probe = new Image();
+          probe.onload = () => resolve(probe);
+          probe.onerror = reject;
+          probe.src = src;
+        });
+      }
+
+      function paintVideoFrame(frame) {
+        if (!videoContext) return;
+        const sourceWidth = frame.naturalWidth || frame.width;
+        const sourceHeight = frame.naturalHeight || frame.height;
+        if (!sourceWidth || !sourceHeight) return;
+        const targetWidth = 1280;
+        const targetHeight = 720;
+        if (videoStream.width !== targetWidth || videoStream.height !== targetHeight) {
+          videoStream.width = targetWidth;
+          videoStream.height = targetHeight;
+        }
+        const sourceRatio = sourceWidth / sourceHeight;
+        const targetRatio = targetWidth / targetHeight;
+        let sx = 0;
+        let sy = 0;
+        let sw = sourceWidth;
+        let sh = sourceHeight;
+        if (sourceRatio > targetRatio) {
+          sw = sourceHeight * targetRatio;
+          sx = (sourceWidth - sw) / 2;
+        } else if (sourceRatio < targetRatio) {
+          sh = sourceWidth / targetRatio;
+          sy = (sourceHeight - sh) / 2;
+        }
+        videoContext.drawImage(frame, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+      }
+
+      function bindVideoPreviewDrag() {
+        let drag = null;
+        videoPreviewHandle.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          videoPreviewHandle.setPointerCapture(event.pointerId);
+          const rect = videoPreview.getBoundingClientRect();
+          drag = {
+            pointerId: event.pointerId,
+            dx: event.clientX - rect.left,
+            dy: event.clientY - rect.top,
+          };
+        });
+        videoPreviewHandle.addEventListener("pointermove", (event) => {
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          setVideoPreviewPosition(event.clientX - drag.dx, event.clientY - drag.dy);
+        });
+        for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          videoPreviewHandle.addEventListener(name, (event) => {
+            if (!drag || drag.pointerId !== event.pointerId) return;
+            drag = null;
+            saveVideoPreviewPosition();
+          });
+        }
+      }
+
+      function bindJoystickWindowDrag() {
+        let drag = null;
+        cameraJoystickHandle.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          cameraJoystickHandle.setPointerCapture(event.pointerId);
+          const rect = cameraJoystick.getBoundingClientRect();
+          drag = {
+            pointerId: event.pointerId,
+            dx: event.clientX - rect.left,
+            dy: event.clientY - rect.top,
+          };
+        });
+        cameraJoystickHandle.addEventListener("pointermove", (event) => {
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          setJoystickWindowPosition(event.clientX - drag.dx, event.clientY - drag.dy);
+        });
+        for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          cameraJoystickHandle.addEventListener(name, (event) => {
+            if (!drag || drag.pointerId !== event.pointerId) return;
+            drag = null;
+            saveJoystickWindowPosition();
+          });
+        }
+      }
+
+      function bindJoystickPad() {
+        cameraJoystickPad.addEventListener("pointerdown", (event) => {
+          const rect = cameraJoystickPad.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const dx = event.clientX - centerX;
+          const dy = event.clientY - centerY;
+          if (Math.hypot(dx, dy) > 46) {
+            return;
+          }
+          event.preventDefault();
+          cameraJoystickPad.setPointerCapture(event.pointerId);
+          state.joystick.pointerId = event.pointerId;
+          state.joystick.active = true;
+          updateJoystickFromPointer(event);
+        });
+
+        cameraJoystickPad.addEventListener("pointermove", (event) => {
+          if (!state.joystick.active || state.joystick.pointerId !== event.pointerId) return;
+          updateJoystickFromPointer(event);
+        });
+
+        for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          cameraJoystickPad.addEventListener(name, (event) => {
+            if (!state.joystick.active || state.joystick.pointerId !== event.pointerId) return;
+            resetJoystick();
+          });
+        }
+      }
+
+      function bindJoystickZoomZones() {
+        bindJoystickZoomZone(cameraZoomInZone, 1);
+        bindJoystickZoomZone(cameraZoomOutZone, -1);
+      }
+
+      function bindJoystickZoomZone(element, direction) {
+        element.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          element.setPointerCapture(event.pointerId);
+          startZoomHold(event.pointerId, direction, element);
+        });
+        for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          element.addEventListener(name, (event) => {
+            if (state.zoomHold.pointerId !== event.pointerId) return;
+            stopZoomHold();
+          });
+        }
+      }
+
+      function restoreVideoPreviewPosition() {
+        const saved = localStorage.getItem(videoPreviewPositionKey);
+        if (saved) {
+          try {
+            const position = JSON.parse(saved);
+            setVideoPreviewPosition(position.left, position.top);
+            return;
+          } catch (_error) {
+            localStorage.removeItem(videoPreviewPositionKey);
+          }
+        }
+        setVideoPreviewPosition(innerWidth - videoPreview.offsetWidth - 16, 72);
+      }
+
+      function restoreJoystickWindowPosition() {
+        const saved = localStorage.getItem(joystickWindowPositionKey);
+        if (saved) {
+          try {
+            const position = JSON.parse(saved);
+            setJoystickWindowPosition(position.left, position.top);
+            return;
+          } catch (_error) {
+            localStorage.removeItem(joystickWindowPositionKey);
+          }
+        }
+        setJoystickWindowPosition(innerWidth - cameraJoystick.offsetWidth - 24, 388);
+      }
+
+      function saveVideoPreviewPosition() {
+        const rect = videoPreview.getBoundingClientRect();
+        localStorage.setItem(
+          videoPreviewPositionKey,
+          JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) }),
+        );
+      }
+
+      function saveJoystickWindowPosition() {
+        const rect = cameraJoystick.getBoundingClientRect();
+        localStorage.setItem(
+          joystickWindowPositionKey,
+          JSON.stringify({ left: Math.round(rect.left), top: Math.round(rect.top) }),
+        );
+      }
+
+      function setVideoPreviewPosition(left, top) {
+        const margin = 8;
+        const maxLeft = innerWidth - videoPreview.offsetWidth - margin;
+        const maxTop = innerHeight - videoPreview.offsetHeight - margin;
+        videoPreview.style.left = `${clamp(Number(left) || margin, margin, Math.max(margin, maxLeft))}px`;
+        videoPreview.style.top = `${clamp(Number(top) || margin, margin, Math.max(margin, maxTop))}px`;
+      }
+
+      function setJoystickWindowPosition(left, top) {
+        const margin = 8;
+        const maxLeft = innerWidth - cameraJoystick.offsetWidth - margin;
+        const maxTop = innerHeight - cameraJoystick.offsetHeight - margin;
+        cameraJoystick.style.left = `${clamp(Number(left) || margin, margin, Math.max(margin, maxLeft))}px`;
+        cameraJoystick.style.top = `${clamp(Number(top) || margin, margin, Math.max(margin, maxTop))}px`;
+      }
+
+      function updateJoystickFromPointer(event) {
+        const rect = cameraJoystickPad.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const radius = rect.width * 0.34;
+        let dx = event.clientX - centerX;
+        let dy = event.clientY - centerY;
+        const distanceFromCenter = Math.hypot(dx, dy);
+        if (distanceFromCenter > radius && distanceFromCenter > 0) {
+          const scale = radius / distanceFromCenter;
+          dx *= scale;
+          dy *= scale;
+        }
+        state.joystick.vectorX = dx / radius;
+        state.joystick.vectorY = dy / radius;
+        renderJoystickKnob();
+        scheduleJoystickCommand(false);
+      }
+
+      function renderJoystickKnob() {
+        const rect = cameraJoystickPad.getBoundingClientRect();
+        const radius = rect.width * 0.34;
+        const dx = state.joystick.vectorX * radius;
+        const dy = state.joystick.vectorY * radius;
+        cameraJoystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        const magnitude = Math.hypot(state.joystick.vectorX, state.joystick.vectorY);
+        cameraJoystickStatus.textContent = magnitude > 0.08
+          ? `Движение: x ${state.joystick.vectorX.toFixed(2)} / y ${state.joystick.vectorY.toFixed(2)}`
+          : joystickHintText;
+      }
+
+      function scheduleJoystickCommand(immediateStop) {
+        const command = buildJoystickCommandPayload(immediateStop);
+        if (!command) return;
+        if (!state.joystick.sending && command.key === state.joystick.lastCommandKey) {
+          return;
+        }
+        state.joystick.pendingCommand = command;
+        if (!state.joystick.sending) {
+          flushJoystickCommand();
+        }
+      }
+
+      function buildJoystickCommandPayload(immediateStop) {
+        const x = immediateStop ? 0 : clamp(state.joystick.vectorX, -1, 1);
+        const y = immediateStop ? 0 : clamp(state.joystick.vectorY, -1, 1);
+        const pan = joystickComponent(x, 0x18);
+        const tilt = joystickComponent(y, 0x14);
+        const key = `${pan.direction}:${pan.speed}:${tilt.direction}:${tilt.speed}`;
+        return { x, y, key };
+      }
+
+      function joystickComponent(value, maxSpeed, deadzone = 0.14) {
+        const magnitude = Math.abs(value);
+        if (magnitude <= deadzone) {
+          return { direction: 0, speed: 0 };
+        }
+        const scaled = (magnitude - deadzone) / (1 - deadzone);
+        const speed = Math.max(1, Math.min(maxSpeed, Math.round(1 + scaled * (maxSpeed - 1))));
+        return {
+          direction: value < 0 ? -1 : 1,
+          speed,
+        };
+      }
+
+      async function flushJoystickCommand() {
+        if (state.joystick.sending || !state.joystick.pendingCommand) return;
+        const command = state.joystick.pendingCommand;
+        state.joystick.pendingCommand = null;
+        if (command.key === state.joystick.lastCommandKey) {
+          return;
+        }
+        state.joystick.sending = true;
+        try {
+          await fetchJson("/camera/jog", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ x: command.x, y: command.y }),
+          });
+          state.joystick.lastCommandKey = command.key;
+        } catch (error) {
+          console.error("Camera jog request failed", error);
+          state.joystick.lastCommandKey = null;
+          cameraJoystickStatus.textContent = joystickErrorText;
+        } finally {
+          state.joystick.sending = false;
+          if (state.joystick.pendingCommand) {
+            flushJoystickCommand();
+          }
+        }
+      }
+
+      function resetJoystick() {
+        state.joystick.active = false;
+        state.joystick.pointerId = null;
+        state.joystick.vectorX = 0;
+        state.joystick.vectorY = 0;
+        renderJoystickKnob();
+        scheduleJoystickCommand(true);
+      }
+
+      function startZoomHold(pointerId, direction, element) {
+        stopZoomHold();
+        state.zoomHold.pointerId = pointerId;
+        state.zoomHold.direction = direction;
+        element.classList.add("active");
+        cameraJoystickStatus.textContent = direction > 0 ? "Zoom +" : "Zoom -";
+        sendZoomStep(direction);
+        state.zoomHold.timer = setInterval(() => sendZoomStep(direction), 160);
+      }
+
+      function stopZoomHold() {
+        if (state.zoomHold.timer) {
+          clearInterval(state.zoomHold.timer);
+          state.zoomHold.timer = null;
+        }
+        state.zoomHold.pointerId = null;
+        state.zoomHold.direction = 0;
+        cameraZoomInZone.classList.remove("active");
+        cameraZoomOutZone.classList.remove("active");
+        cameraJoystickStatus.textContent = joystickHintText;
+      }
+
+      async function sendZoomStep(direction) {
+        try {
+          const response = await fetchJson("/camera/zoom-step", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ direction, step: 320 }),
+          });
+          if (response && typeof response.zoom === "number") {
+            state.lastCameraPose.zoom = response.zoom;
+          }
+        } catch (error) {
+          console.error("Camera zoom request failed", error);
+          cameraJoystickStatus.textContent = joystickErrorText;
         }
       }
 
@@ -742,8 +1712,10 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               scan_id: state.scanId,
+              stitch_engine: settingsStitchEngine.value,
               projection: settingsProjection.value,
               strategy: settingsStrategy.value,
+              stitch_quality: settingsStitchQuality.value,
               use_lens_calibration: settingsUseLens.checked,
             }),
           });
@@ -767,11 +1739,14 @@
         settingsScanId.value = scanId;
         setSettingsBusy(true, `Запуск съемки ${scanId}...`);
         try {
+          await saveCameraSettings({ quiet: true });
           const body = {
             scan_id: scanId,
             stitch_after: true,
+            stitch_engine: settingsStitchEngine.value,
             projection: settingsProjection.value,
             strategy: settingsStrategy.value,
+            stitch_quality: settingsStitchQuality.value,
             scan_order: settingsScanOrder.value,
             use_lens_calibration: settingsUseLens.checked,
           };
@@ -829,6 +1804,7 @@
 
       function setSettingsBusy(isBusy, message) {
         settingsStatus.textContent = message;
+        saveCameraHostButton.disabled = isBusy;
         stitchButton.disabled = isBusy;
         scanAndStitchButton.disabled = isBusy;
       }
@@ -848,7 +1824,18 @@
       }
 
       function currentTarget() {
-        const center = screenToImage({ x: innerWidth / 2, y: innerHeight / 2 });
+        return targetFromScreenPoint(innerWidth / 2, innerHeight / 2);
+      }
+
+      function targetFromScreenPoint(screenX, screenY) {
+        if (!state.info || !image.naturalWidth || !image.naturalHeight) {
+          return {
+            yaw_deg: 0,
+            pitch_deg: 0,
+            target_hfov_deg: 60,
+          };
+        }
+        const center = screenToImage({ x: screenX, y: screenY });
         const x = clamp(center.x, 0, image.naturalWidth - 1);
         const y = clamp(center.y, 0, image.naturalHeight - 1);
         const bbox = state.info.content_bbox;
@@ -861,10 +1848,61 @@
         const visibleFullWidth = (visiblePreviewWidth / image.naturalWidth) * bboxWidth;
         const targetHfovScale = Number(hfovScaleInput.value);
         const targetHfov = clamp((visibleFullWidth / panoramaSize[0]) * 360 * targetHfovScale, 2, 120);
+        const mappedPose = mappedPoseFromControlPoints(fullX, fullY);
+        if (mappedPose) {
+          return {
+            yaw_deg: clamp(mappedPose.yaw_deg + Number(yawOffsetInput.value), -180, 180),
+            pitch_deg: clamp(mappedPose.pitch_deg + Number(pitchOffsetInput.value), -90, 90),
+            target_hfov_deg: targetHfov,
+          };
+        }
         return {
           yaw_deg: clamp((fullX / panoramaSize[0]) * 360 - 180 + Number(yawOffsetInput.value), -180, 180),
           pitch_deg: clamp(90 - (fullY / panoramaSize[1]) * 180 + Number(pitchOffsetInput.value), -90, 90),
           target_hfov_deg: targetHfov,
+        };
+      }
+
+      function mappedPoseFromControlPoints(fullX, fullY) {
+        const mapping = state.info?.stitching?.ptz_mapping;
+        const points = mapping?.control_points;
+        if (mapping?.status !== "control_points" || !Array.isArray(points) || points.length < 3) {
+          return null;
+        }
+        const nearest = [];
+        for (const point of points) {
+          const xy = point.pano_xy;
+          if (!Array.isArray(xy) || xy.length < 2) continue;
+          const dx = Number(xy[0]) - fullX;
+          const dy = Number(xy[1]) - fullY;
+          const distance2 = dx * dx + dy * dy;
+          nearest.push({ point, distance2 });
+        }
+        nearest.sort((left, right) => left.distance2 - right.distance2);
+        const selected = nearest.slice(0, 8);
+        if (!selected.length) return null;
+        if (selected[0].distance2 < 1e-6) {
+          return {
+            yaw_deg: Number(selected[0].point.yaw_deg),
+            pitch_deg: Number(selected[0].point.pitch_deg),
+          };
+        }
+        let weightSum = 0;
+        let yawSum = 0;
+        let pitchSum = 0;
+        for (const item of selected) {
+          const yaw = Number(item.point.yaw_deg);
+          const pitch = Number(item.point.pitch_deg);
+          if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) continue;
+          const weight = 1 / Math.max(item.distance2, 1);
+          weightSum += weight;
+          yawSum += yaw * weight;
+          pitchSum += pitch * weight;
+        }
+        if (!weightSum) return null;
+        return {
+          yaw_deg: yawSum / weightSum,
+          pitch_deg: pitchSum / weightSum,
         };
       }
 
@@ -954,7 +1992,12 @@
           calibrationReadout.textContent = "Нет данных калибровки";
         }
 
-        if (!state.showGrid || !state.scanData) return;
+        if (!state.showGrid || !state.scanData || !state.info) return;
+
+        if (renderMappedFrameGrid()) {
+          update();
+          return;
+        }
 
         const bbox = state.info.content_bbox;
         const panoramaSize = state.info.panorama_size;
@@ -1016,6 +2059,55 @@
         update();
       }
 
+      function renderMappedFrameGrid() {
+        const mapping = state.info?.stitching?.ptz_mapping;
+        const points = mapping?.control_points;
+        if (mapping?.status !== "control_points" || !Array.isArray(points) || points.length === 0) {
+          return false;
+        }
+        const bbox = state.info.content_bbox;
+        const bboxWidth = bbox[2] - bbox[0] + 1;
+        const bboxHeight = bbox[3] - bbox[1] + 1;
+        const byFrame = new Map();
+        for (const point of points) {
+          if (!Array.isArray(point.pano_xy) || point.pano_xy.length < 2) continue;
+          const key = Number(point.frame_index);
+          if (!Number.isFinite(key)) continue;
+          if (!byFrame.has(key)) byFrame.set(key, []);
+          byFrame.get(key).push(point);
+        }
+        for (const [frameIndex, framePoints] of byFrame.entries()) {
+          const xs = framePoints.map((point) => Number(point.pano_xy[0])).filter(Number.isFinite);
+          const ys = framePoints.map((point) => Number(point.pano_xy[1])).filter(Number.isFinite);
+          if (!xs.length || !ys.length) continue;
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          const x = (minX - bbox[0]) / bboxWidth * image.naturalWidth;
+          const y = (minY - bbox[1]) / bboxHeight * image.naturalHeight;
+          const w = Math.max(1, (maxX - minX) / bboxWidth * image.naturalWidth);
+          const h = Math.max(1, (maxY - minY) / bboxHeight * image.naturalHeight);
+          const rect = document.createElement("div");
+          rect.className = "frame-rect";
+          rect.style.left = `${x}px`;
+          rect.style.top = `${y}px`;
+          rect.style.width = `${w}px`;
+          rect.style.height = `${h}px`;
+          rect.innerHTML = `<span class="frame-label">${frameIndex}</span>`;
+          rect.title = `F${frameIndex}: OpenStitching mapped frame`;
+          gridContainer.appendChild(rect);
+          for (const point of framePoints) {
+            const marker = document.createElement("div");
+            marker.className = "mapping-point";
+            marker.style.left = `${(Number(point.pano_xy[0]) - bbox[0]) / bboxWidth * image.naturalWidth}px`;
+            marker.style.top = `${(Number(point.pano_xy[1]) - bbox[1]) / bboxHeight * image.naturalHeight}px`;
+            gridContainer.appendChild(marker);
+          }
+        }
+        return true;
+      }
+
       async function loadAdjustments() {
         try {
           state.corrections = await fetchJson("/calibration/adjustments");
@@ -1032,6 +2124,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
+              scan_id: state.scanId,
               yaw_deg: yaw, 
               pitch_deg: pitch, 
               target_hfov_deg: hfov, 
@@ -1039,7 +2132,11 @@
             }),
           });
           const pose = response.actual_pose || response.command_pose;
-          readout.textContent = `P ${pose.pan} / T ${pose.tilt} / Z ${pose.zoom}`;
+          const corrected = response.corrected_target;
+          const correctionNote = corrected?.applied
+            ? ` / corr ${Number(corrected.yaw_deg).toFixed(1)}, ${Number(corrected.pitch_deg).toFixed(1)} (${corrected.correction_count})`
+            : "";
+          readout.textContent = `P ${pose.pan} / T ${pose.tilt} / Z ${pose.zoom}${correctionNote}`;
         } catch (error) {
           readout.textContent = error.message;
         } finally {
@@ -1049,15 +2146,27 @@
       }
 
       function startTelemetryLoop() {
+        if (state.telemetryStarted) return;
+        state.telemetryStarted = true;
         setInterval(async () => {
+          if (state.telemetryRequestInFlight || isCameraControlActive()) {
+            return;
+          }
+          state.telemetryRequestInFlight = true;
           try {
             const pose = await fetchJson("/camera/status");
             state.lastCameraPose = pose;
             telemetry.textContent = `P: ${pose.pan} T: ${pose.tilt} Z: ${pose.zoom}`;
           } catch (e) {
             telemetry.textContent = "Offline";
+          } finally {
+            state.telemetryRequestInFlight = false;
           }
         }, 1000);
+      }
+
+      function isCameraControlActive() {
+        return state.joystick.active || state.zoomHold.direction !== 0;
       }
 
       async function fetchJson(url, options) {

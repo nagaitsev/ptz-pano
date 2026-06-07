@@ -4,11 +4,16 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+build/
+dist/
+*.spec
 
 config/*.local.json
 data/projects/*
 data/scans/*
 data/calibration/*
+data/logs/*
+data/quality-check/*
 data/*.jpg
 data/*.jpeg
 data/*.png
@@ -18,3 +23,5 @@ data/*.png
 !data/calibration/*.example.fov.json
 
 *.log
+tools/mediamtx/*
+!tools/mediamtx/.gitkeep

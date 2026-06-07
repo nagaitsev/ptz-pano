@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -17,6 +18,7 @@ class CompositorResult:
     preview_path: Path | None
     coverage_percent: float
     content_bbox: tuple[int, int, int, int] | None
+    details: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -28,9 +30,25 @@ class SimpleCompositor:
     lens_calibration: LensCalibration | None = None
     strategy: Literal["average", "max_weight"] = "average"
     projection: Literal["angular", "sphere"] = "angular"
+    seam_finder: Literal["graph_cut", "none"] = "graph_cut"
+    seam_scale: float = 0.4
+    exposure_compensator: Literal["gain_blocks", "none"] = "gain_blocks"
+    blender: Literal["multi_band", "weighted"] = "weighted"
 
     def build(self, scan_path: Path, frames: list[FrameMetadata], output_path: Path) -> CompositorResult:
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.blender == "multi_band":
+            return self._build_detail(scan_path, frames, output_path)
+
+        return self._build_weighted(scan_path, frames, output_path)
+
+    def _build_weighted(
+        self,
+        scan_path: Path,
+        frames: list[FrameMetadata],
+        output_path: Path,
+    ) -> CompositorResult:
+        total_start = time.perf_counter()
         canvas = np.zeros((self.height, self.width, 3), dtype=np.float32)
         footprint = np.zeros((self.height, self.width), dtype=bool)
 
@@ -89,6 +107,94 @@ class SimpleCompositor:
             preview_path=preview_path,
             coverage_percent=coverage_percent,
             content_bbox=content_bbox,
+            details=self._diagnostics(total_start, len(frames)),
+        )
+
+    def _build_detail(
+        self,
+        scan_path: Path,
+        frames: list[FrameMetadata],
+        output_path: Path,
+    ) -> CompositorResult:
+        total_start = time.perf_counter()
+        warped_images: list[np.ndarray] = []
+        seam_masks: list[np.ndarray] = []
+        exposure_masks: list[np.ndarray] = []
+        corners: list[tuple[int, int]] = []
+
+        for frame in frames:
+            if frame.hfov_deg is None or frame.vfov_deg is None:
+                raise ValueError(f"frame is missing FOV metadata: {frame.file}")
+            image = cv2.imread(str(scan_path / frame.file))
+            if image is None:
+                raise RuntimeError(f"failed to read frame image: {scan_path / frame.file}")
+            if self.lens_calibration is not None:
+                image = self.lens_calibration.undistort(image, frame.pose.zoom)
+
+            warped, _mask, valid_footprint, x0, y0 = self._warp_frame(
+                image,
+                frame,
+                pyramidal=(self.strategy == "max_weight"),
+            )
+            valid_mask = valid_footprint.astype(np.uint8) * 255
+            warped_images.append(warped)
+            seam_masks.append(valid_mask.copy())
+            exposure_masks.append(valid_mask)
+            corners.append((x0, y0))
+
+        if not warped_images:
+            raise ValueError("cannot build panorama without frames")
+
+        if self.exposure_compensator == "gain_blocks" and len(warped_images) > 1:
+            compensator = cv2.detail.ExposureCompensator_createDefault(
+                cv2.detail.ExposureCompensator_GAIN_BLOCKS
+            )
+            compensator.feed(corners, warped_images, exposure_masks)
+        else:
+            compensator = None
+
+        if self.seam_finder == "graph_cut" and len(warped_images) > 1:
+            seam_masks = _find_graph_cut_seams(
+                warped_images,
+                seam_masks,
+                corners,
+                self.seam_scale,
+            )
+
+        blender = cv2.detail.Blender_createDefault(cv2.detail.Blender_MULTI_BAND, False)
+        if hasattr(blender, "setNumBands"):
+            blender.setNumBands(_num_blend_bands(warped_images))
+        roi = cv2.detail.resultRoi(corners, [image.shape[:2][::-1] for image in warped_images])
+        blender.prepare(roi)
+
+        for index, (image, mask, corner) in enumerate(zip(warped_images, seam_masks, corners)):
+            compensated = image.copy()
+            if compensator is not None:
+                compensator.apply(index, corner, compensated, exposure_masks[index])
+            blender.feed(compensated.astype(np.int16), mask, corner)
+
+        blended, blended_mask = blender.blend(None, None)
+        blended = np.clip(blended, 0, 255).astype(np.uint8)
+
+        x0, y0, width, height = roi
+        canvas = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+        populated = np.zeros((self.height, self.width), dtype=bool)
+        x1 = _clamp(x0 + width, 0, self.width)
+        y1 = _clamp(y0 + height, 0, self.height)
+        canvas[y0:y1, x0:x1] = blended[: y1 - y0, : x1 - x0]
+        populated[y0:y1, x0:x1] = blended_mask[: y1 - y0, : x1 - x0] > 0
+
+        if not cv2.imwrite(str(output_path), canvas):
+            raise RuntimeError(f"failed to write panorama: {output_path}")
+
+        preview_path, content_bbox = _write_preview(canvas, populated, output_path)
+        coverage_percent = float(populated.mean() * 100)
+        return CompositorResult(
+            panorama_path=output_path,
+            preview_path=preview_path,
+            coverage_percent=coverage_percent,
+            content_bbox=content_bbox,
+            details=self._diagnostics(total_start, len(frames)),
         )
 
     def _warp_frame(
@@ -155,6 +261,20 @@ class SimpleCompositor:
         mask = _feather_mask_from_norm(x_norm, y_norm, valid, pyramidal=pyramidal)
         return warped, mask, valid, x0, y0
 
+    def _diagnostics(self, total_start: float, frame_count: int) -> dict[str, object]:
+        return {
+            "algorithm": "telemetry_compositor",
+            "strategy": self.strategy,
+            "projection": self.projection,
+            "blender": self.blender,
+            "seam_finder": self.seam_finder,
+            "seam_scale": self.seam_scale,
+            "exposure_compensator": self.exposure_compensator,
+            "frame_count": frame_count,
+            "output_size": [self.width, self.height],
+            "timings": {"total_sec": round(time.perf_counter() - total_start, 6)},
+        }
+
 
 def _feather_mask(width: int, height: int) -> np.ndarray:
     x = np.linspace(0, 1, width, dtype=np.float32)
@@ -164,6 +284,47 @@ def _feather_mask(width: int, height: int) -> np.ndarray:
     feather_x = np.clip(edge_x * 12, 0.05, 1)
     feather_y = np.clip(edge_y * 12, 0.05, 1)
     return (feather_y[:, None] * feather_x[None, :])[:, :, None]
+
+
+def _num_blend_bands(images: list[np.ndarray]) -> int:
+    max_side = max(max(image.shape[:2]) for image in images)
+    return max(1, min(8, int(np.ceil(np.log2(max_side))) - 4))
+
+
+def _find_graph_cut_seams(
+    images: list[np.ndarray],
+    masks: list[np.ndarray],
+    corners: list[tuple[int, int]],
+    scale: float,
+) -> list[np.ndarray]:
+    if scale >= 1:
+        seam_images = [image.astype(np.float32) for image in images]
+        seam_masks = [mask.copy() for mask in masks]
+        seam_corners = corners
+    else:
+        scale = max(scale, 0.1)
+        seam_images = []
+        seam_masks = []
+        seam_corners = []
+        for image, mask, (x0, y0) in zip(images, masks, corners):
+            width = max(1, round(image.shape[1] * scale))
+            height = max(1, round(image.shape[0] * scale))
+            seam_images.append(
+                cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA).astype(np.float32)
+            )
+            seam_masks.append(cv2.resize(mask, (width, height), interpolation=cv2.INTER_NEAREST))
+            seam_corners.append((round(x0 * scale), round(y0 * scale)))
+
+    seam_finder = cv2.detail.GraphCutSeamFinder("COST_COLOR")
+    seam_finder.find(seam_images, seam_corners, seam_masks)
+
+    if scale >= 1:
+        return seam_masks
+
+    return [
+        cv2.resize(mask, image.shape[:2][::-1], interpolation=cv2.INTER_NEAREST)
+        for mask, image in zip(seam_masks, images)
+    ]
 
 
 def _feather_mask_from_norm(

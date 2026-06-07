@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from ptz_pano.jsonio import write_json
@@ -28,12 +28,26 @@ class PanoramaBuilder:
         panorama_result = None
         alignment_result = None
         compositor_frames = document.frames
-        if not missing_geometry:
-            alignment_result = self.aligner.align(
+        aligner = replace(
+            self.aligner,
+            pan_units_per_degree=getattr(
+                self.compositor,
+                "pan_units_per_degree",
+                self.aligner.pan_units_per_degree,
+            ),
+            tilt_units_per_degree=getattr(
+                self.compositor,
+                "tilt_units_per_degree",
+                self.aligner.tilt_units_per_degree,
+            ),
+        )
+        if not missing_geometry and getattr(self.compositor, "uses_external_alignment", True):
+            alignment_result = aligner.align(
                 self.repository.scan_path(scan_id),
                 document.frames,
             )
             compositor_frames = alignment_result.frames
+        if not missing_geometry:
             panorama_result = self.compositor.build(
                 self.repository.scan_path(scan_id),
                 compositor_frames,
@@ -67,10 +81,15 @@ class PanoramaBuilder:
                 "stitching": {
                     "strategy": self.compositor.strategy,
                     "projection": self.compositor.projection,
+                    **(
+                        {}
+                        if panorama_result is None or panorama_result.details is None
+                        else panorama_result.details
+                    ),
                 },
                 "frames": compositor_frames,
                 "missing_geometry": missing_geometry,
-                "next_step": "Replace simple placement with spherical remap and multiband blending.",
+                "next_step": "Tune lens/PTZ calibration if residual seam drift remains.",
             },
         )
         return output_path

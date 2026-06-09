@@ -8,6 +8,8 @@ Owns:
 - viewer HTML
 - camera targeting endpoints
 - lens-calibration capture endpoints
+- preview mode selection between WebRTC/WHEP and JPEG fallback
+- user-visible preview status text for WebRTC errors and timeouts
 
 Does not own camera protocol details, scan planning, capture, or stitching math.
 

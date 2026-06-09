@@ -63,6 +63,12 @@ Rebuild the current saved panorama without moving the camera:
 .\scripts\build-panorama.ps1
 ```
 
+Build a portable Windows bundle:
+
+```powershell
+.\scripts\build-portable.ps1 -Name PTZ-Pano-current -IncludeLocalConfig
+```
+
 Start with code reload while editing:
 
 ```powershell
@@ -121,6 +127,22 @@ The scan order selector can use column snake mode, which captures one vertical
 column bottom-to-top, shifts horizontally, then captures the next column
 top-to-bottom. This helps compare row alignment against the original row snake
 mode.
+
+## Portable Build
+
+`.\scripts\build-portable.ps1` builds a self-contained onedir bundle under
+`dist/<Name>`. The portable launcher starts the FastAPI app, rewrites the RTSP
+host in `config\camera.local.json` to the configured camera IP, and starts a
+local `MediaMTX` gateway on `http://127.0.0.1:8889/camera/whep` for the preview.
+
+Portable runtime logs are written inside the bundle:
+
+- `logs\portable-server.log`
+- `logs\mediamtx.stdout.log`
+- `logs\mediamtx.stderr.log`
+
+If the preview falls back to JPEG, the status text in the viewer now includes
+the reason, for example `WHEP 404`, `WebRTC timeout`, or `disconnected`.
 
 ## Current Scope
 

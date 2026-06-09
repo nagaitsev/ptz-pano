@@ -13,6 +13,9 @@ $Python = Join-Path $RepoRoot ".venv\Scripts\python.exe"
 $DistRoot = Join-Path $RepoRoot "dist"
 $BundlePath = Join-Path $DistRoot $Name
 $BuildWorkPath = Join-Path $RepoRoot "build"
+$PyInstallerDistRoot = Join-Path $env:TEMP "ptz-pano-pyinstaller-dist"
+$PyInstallerBundlePath = Join-Path $PyInstallerDistRoot $Name
+$OldBundleBackupPath = $null
 
 Set-Location $RepoRoot
 
@@ -22,6 +25,9 @@ if (-not (Test-Path $Python)) {
 
 if (-not $SkipInstall) {
     & $Python -m pip install -e ".[dev,build]"
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip install failed with exit code $LASTEXITCODE."
+    }
 }
 
 $separator = [IO.Path]::PathSeparator
@@ -30,11 +36,16 @@ $dataArgs = @(
     "--add-data", "backend/app/ptz_pano/api/calibrate_lens.html${separator}ptz_pano/api"
 )
 
+if (Test-Path $PyInstallerBundlePath) {
+    Remove-Item -Path $PyInstallerBundlePath -Recurse -Force
+}
+
 & $Python -m PyInstaller `
     --noconfirm `
     --clean `
     --onedir `
     --name $Name `
+    --distpath $PyInstallerDistRoot `
     --workpath $BuildWorkPath `
     --paths "backend/app" `
     --collect-submodules "ptz_pano" `
@@ -45,6 +56,17 @@ $dataArgs = @(
     --hidden-import "uvicorn.lifespan.on" `
     @dataArgs `
     "backend/app/ptz_pano/tools/portable_server.py"
+if ($LASTEXITCODE -ne 0) {
+    throw "PyInstaller failed with exit code $LASTEXITCODE."
+}
+
+if (Test-Path $BundlePath) {
+    $backupSuffix = Get-Date -Format "yyyyMMdd_HHmmss"
+    $OldBundleBackupPath = Join-Path $DistRoot "${Name}-previous-${backupSuffix}"
+    Move-Item -Path $BundlePath -Destination $OldBundleBackupPath -Force
+}
+New-Item -ItemType Directory -Path $DistRoot -Force | Out-Null
+Copy-Item -Path $PyInstallerBundlePath -Destination $BundlePath -Recurse -Force
 
 if (Test-Path (Join-Path $BundlePath "config")) {
     Remove-Item -Path (Join-Path $BundlePath "config") -Recurse -Force
@@ -72,6 +94,18 @@ if ($IncludeScans) {
     Copy-Item -Path "data/scans/*" -Destination $scansPath -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+$mediaMtxSourcePath = Join-Path $RepoRoot "tools\mediamtx\bin"
+$mediaMtxBundlePath = Join-Path $BundlePath "tools\mediamtx"
+if (Test-Path $mediaMtxBundlePath) {
+    Remove-Item -Path $mediaMtxBundlePath -Recurse -Force
+}
+if (Test-Path $mediaMtxSourcePath) {
+    New-Item -ItemType Directory -Path $mediaMtxBundlePath -Force | Out-Null
+    Copy-Item -Path (Join-Path $mediaMtxSourcePath "*") -Destination $mediaMtxBundlePath -Recurse -Force
+} else {
+    Write-Warning "MediaMTX binaries were not found under tools\\mediamtx\\bin. Portable preview will fall back to JPEG."
+}
+
 $readmePath = Join-Path $BundlePath "README-portable.txt"
 @"
 PTZ Pano Portable
@@ -85,6 +119,7 @@ Then open:
 Camera settings:
   Edit the camera IP in the web UI settings panel, or edit config\camera.local.json.
   If config\camera.local.json is missing, the app creates it from config\camera.example.json.
+  On startup the portable build rewrites RTSP host to the configured camera IP and starts a local MediaMTX gateway for WebRTC preview.
 
 Command-line options:
   $Name.exe --port 8010
@@ -101,6 +136,14 @@ Build notes:
 
 if (-not $KeepBuildWork -and (Test-Path $BuildWorkPath)) {
     Remove-Item -Path $BuildWorkPath -Recurse -Force
+}
+
+if ($OldBundleBackupPath -and (Test-Path $OldBundleBackupPath)) {
+    try {
+        Remove-Item -Path $OldBundleBackupPath -Recurse -Force
+    } catch {
+        Write-Warning "Previous portable bundle was moved to $OldBundleBackupPath and could not be removed automatically."
+    }
 }
 
 Write-Host "Portable bundle ready:"

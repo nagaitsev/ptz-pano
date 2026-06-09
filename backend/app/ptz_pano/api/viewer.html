@@ -801,6 +801,8 @@
         videoMode: "image",
         webrtcPeerConnection: null,
         webrtcSessionUrl: null,
+        webrtcTrackReceived: false,
+        webrtcWatchdogTimer: null,
         showGrid: false,
         activeFrame: null,
         lastCameraPose: { pan: 0, tilt: 0, zoom: 0 },
@@ -1220,13 +1222,14 @@
         stopImagePreviewPolling();
         stopWebRtcPreview();
         if (!("RTCPeerConnection" in window)) {
-          fallbackToImagePreview("JPEG fallback");
+          fallbackToImagePreview("JPEG fallback: WebRTC unsupported");
           return;
         }
-        videoStatus.textContent = "WebRTC";
+        videoStatus.textContent = "WebRTC connecting";
         try {
           const peerConnection = new RTCPeerConnection({ iceServers: [] });
           state.webrtcPeerConnection = peerConnection;
+          state.webrtcTrackReceived = false;
           state.videoMode = "webrtc";
           const mediaStream = new MediaStream();
           videoElement.srcObject = mediaStream;
@@ -1237,6 +1240,7 @@
           };
           peerConnection.addTransceiver("video", { direction: "recvonly" });
           peerConnection.ontrack = (event) => {
+            state.webrtcTrackReceived = true;
             const source = event.streams[0];
             if (source) {
               for (const track of source.getVideoTracks()) {
@@ -1255,7 +1259,7 @@
           peerConnection.onconnectionstatechange = () => {
             if (peerConnection !== state.webrtcPeerConnection) return;
             if (["failed", "disconnected", "closed"].includes(peerConnection.connectionState)) {
-              fallbackToImagePreview("JPEG fallback");
+              fallbackToImagePreview(`JPEG fallback: ${peerConnection.connectionState}`);
             }
           };
           const offer = await peerConnection.createOffer();
@@ -1279,17 +1283,17 @@
           videoElement.style.display = "block";
           videoStream.style.display = "none";
           videoStatus.textContent = videoElement.readyState >= 2 ? "WebRTC" : "WebRTC connecting";
-          setTimeout(() => {
-            if (
-              state.videoMode === "webrtc" &&
-              state.webrtcPeerConnection === peerConnection &&
-              videoElement.readyState < 2
-            ) {
-              fallbackToImagePreview("JPEG fallback");
-            }
-          }, 3500);
-        } catch (_error) {
-          fallbackToImagePreview("JPEG fallback");
+          state.webrtcWatchdogTimer = setTimeout(() => {
+            if (state.videoMode !== "webrtc") return;
+            if (state.webrtcPeerConnection !== peerConnection) return;
+            if (state.webrtcTrackReceived) return;
+            if (["connected", "completed"].includes(peerConnection.iceConnectionState)) return;
+            if (peerConnection.connectionState === "connected") return;
+            fallbackToImagePreview("JPEG fallback: WebRTC timeout");
+          }, 10000);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "WebRTC setup failed";
+          fallbackToImagePreview(`JPEG fallback: ${message}`);
         }
       }
 
@@ -1313,6 +1317,11 @@
       function stopWebRtcPreview() {
         const peerConnection = state.webrtcPeerConnection;
         state.webrtcPeerConnection = null;
+        state.webrtcTrackReceived = false;
+        if (state.webrtcWatchdogTimer) {
+          clearTimeout(state.webrtcWatchdogTimer);
+          state.webrtcWatchdogTimer = null;
+        }
         if (peerConnection) {
           peerConnection.ontrack = null;
           peerConnection.onconnectionstatechange = null;
